@@ -2,7 +2,7 @@
 
 # name: discourse-spam-guard
 # about: Explainable Stop Forum Spam reputation checks and moderation tools.
-# version: 0.1.1
+# version: 0.1.2
 # authors: Robert Barrow
 # url: https://github.com/merefield/discourse-spam-guard
 
@@ -32,16 +32,10 @@ require_relative "lib/discourse_spam_guard/engine"
 after_initialize do
   register_reviewable_type ReviewableSpamGuard
 
-  # Retained evidence remains available when automatic checking is disabled.
-  # rubocop:disable Discourse/Plugins/UsePluginInstanceOn
-  DiscourseEvent.on(:admin_user_list_preloaded) do |users, guardian|
-    DiscourseSpamGuard::AdminUserList.preload(users, guardian)
+  reloadable_patch do
+    Admin::UsersController.prepend(DiscourseSpamGuard::CoreExtensions::AdminUsersController)
+    Reviewable.singleton_class.prepend(DiscourseSpamGuard::CoreExtensions::ReviewableQuery)
   end
-
-  DiscourseEvent.on(:reviewables_preloaded) do |reviewables, _guardian|
-    DiscourseSpamGuard::ReviewEvidence.preload(reviewables)
-  end
-  # rubocop:enable Discourse/Plugins/UsePluginInstanceOn
 
   add_to_serializer(
     :admin_user_list,

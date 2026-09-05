@@ -12,9 +12,16 @@ export default {
         queryParams: ["spamGuard"],
         spamGuard: false,
       });
-      api.registerValueTransformer(
-        "admin-user-list-column-count",
-        ({ value }) => value + 1
+      api.modifyClass(
+        "controller:admin-users-list/show",
+        (Superclass) =>
+          class extends Superclass {
+            pluginId = "discourse-spam-guard-user-list-column";
+
+            get columnCount() {
+              return super.columnCount + 1;
+            }
+          }
       );
     });
   },
