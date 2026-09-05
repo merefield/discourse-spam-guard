@@ -45,5 +45,6 @@ Policy version 5 also adds the [local signals](local-signals.md) contribution
 to the displayed score. Those points can request review but cannot restore a
 silence recommendation reduced by reading. Engagement is evaluated on registration,
 delayed, manual and activity checks. There is no periodic sweep. Old scans
-without an assessment retain their original presentation. Pro may later add
-trends, while configurable basic weights, this assessment and its explanation stay free.
+without an assessment retain their original presentation. Configurable basic
+weights, this assessment and its explanation remain part of the free plugin.
+Pro may later add trend analysis.
