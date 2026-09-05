@@ -1,5 +1,26 @@
 # Discourse integration audit
 
+## Upstream compatibility correction
+
+Upstream CI exposed that the proposed preload events and column transformer were
+local core changes, not upstream APIs. They are no longer deployment requirements.
+
+- A reloadable extension of `Admin::UsersController#serialize_data` prepares only
+  `AdminUserListSerializer` collections, retaining the admin guardian check and
+  two batched evidence queries after core has filtered and paginated users.
+- A reloadable extension of `Reviewable.list_for` extends the returned relation's
+  `records` method. Evidence loads after core associations, only for the loaded
+  page. Count queries stay lazy; repeated reads reuse the loaded evidence.
+- The admin-only frontend initializer extends `columnCount` through
+  `api.modifyClass`, adding one to core's result so optional core columns still
+  work. It does not register an unavailable transformer.
+
+These narrow extensions call `super` and preserve core filtering, permissions and
+pagination. They are compatibility surfaces covered by request/query and browser
+regression tests against unmodified upstream Discourse. Dedicated upstream hooks
+would let us retire them in future. The earlier audit below records the proposed
+hook-based approach, which this correction supersedes.
+
 Reviewed against the local Discourse checkout on 2026-09-05. The findings below
 record the original audit. Runtime fixes have subsequently been implemented.
 
@@ -27,7 +48,7 @@ record the original audit. Runtime fixes have subsequently been implemented.
   persisted. Extension failures leave free checks working; contributions can
   request review but never elevate a decision to automatic silence.
 
-Deploy the three accompanying core changes with this plugin. They are generic
+The earlier proposal required three accompanying core changes; this is superseded above. They are generic
 extension points but are not assumed to be present in upstream Discourse.
 See the README and the extension contract for details.
 

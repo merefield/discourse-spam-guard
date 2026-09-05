@@ -44,6 +44,17 @@ RSpec.describe ReviewablesController do
     )
     expect(queries.count { |sql| sql.include?("FROM \"spam_guard_scans\"") }).to eq(1)
 
+    page = Reviewable.list_for(admin, type: "ReviewableSpamGuard", limit: 1)
+    count_queries = track_sql_queries { expect(page.count).to eq(1) }
+    expect(count_queries.grep(/FROM "spam_guard_scans"/)).to be_empty
+
+    page_queries =
+      track_sql_queries do
+        expect(page.to_a.size).to eq(1)
+        expect(page.to_a.first.spam_guard_scan).to be_present
+      end
+    expect(page_queries.grep(/FROM "spam_guard_scans"/).size).to eq(1)
+
     get "/review/#{scans.first.reviewable_id}.json"
     expect(response.status).to eq(200)
     expect(response.parsed_body.dig("reviewable", "spam_guard_scan", "id")).to eq(scans.first.id)

@@ -3,7 +3,12 @@
 module DiscourseSpamGuard
   class ReviewEvidence
     def self.preload(reviewables)
-      reviews = reviewables.grep(ReviewableSpamGuard)
+      reviews =
+        reviewables
+          .grep(ReviewableSpamGuard)
+          .reject { |review| review.instance_variable_defined?(:@spam_guard_scan) }
+      return if reviews.empty?
+
       scans = Scan.where(id: reviews.map { |review| review.payload["scan_id"] }).index_by(&:id)
       reviews.each do |review|
         scan = scans[review.payload["scan_id"]]
