@@ -61,6 +61,13 @@ export default class SpamGuardEvidence extends Component {
         </header>
 
         {{#if @scan.policy.assessment}}
+          {{#if @scan.policy.weights}}
+            <p class="spam-guard-evidence__caption">{{i18n
+                "spam_guard.dashboard.configured_weights"
+                spam_points=@scan.policy.weights.confirmed_spam
+                cap=@scan.policy.weights.local_cap
+              }}</p>
+          {{/if}}
           <div class="spam-guard-evidence__grid">
             <section
               class="spam-guard-evidence__card spam-guard-evidence__engagement"

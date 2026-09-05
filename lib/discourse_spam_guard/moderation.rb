@@ -28,7 +28,7 @@ module DiscourseSpamGuard
     end
 
     def self.allow(user, actor, reviewable: nil)
-      raise Discourse::InvalidAccess unless actor.staff? && actor.human? && !user.staff?
+      raise Discourse::InvalidAccess unless actor.guardian.is_admin? && actor.human? && !user.staff?
       user.with_lock do
         account = Account.find_or_create_by!(user: user)
         UserSilencer.unsilence(user, actor, reviewable_id: reviewable&.id) if account.owns_silence?

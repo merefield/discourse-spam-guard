@@ -2,15 +2,13 @@
 
 RSpec.describe DiscourseSpamGuard::AdditionalEvidence do
   fab!(:user)
-  let(:plugin) do
-    Plugin::Instance.new.tap { |instance| instance.enabled_site_setting(:spam_guard_pro_enabled) }
-  end
+  let(:plugin) { Plugin::Instance.new }
   let(:entries) { [{ "label" => "Extension evidence", "points" => 25 }] }
   let(:modifier) { proc { |_value, _user_id, _source| entries } }
 
   before do
     SiteSetting.spam_guard_enabled = true
-    SiteSetting.spam_guard_pro_enabled = true
+    plugin.stubs(:enabled?).returns(true)
     SiteSetting.spam_guard_mode = "protect"
     SiteSetting.spam_guard_check_ip = false
     DiscoursePluginRegistry.register_modifier(plugin, :spam_guard_additional_evidence, &modifier)
@@ -31,11 +29,11 @@ RSpec.describe DiscourseSpamGuard::AdditionalEvidence do
   end
 
   it "ignores disabled extensions and preserves account exemptions" do
-    SiteSetting.spam_guard_pro_enabled = false
+    plugin.stubs(:enabled?).returns(false)
     scan = DiscourseSpamGuard::Checker.call(user, source: "manual")
     expect(scan.policy.dig("assessment", "additional_evidence")).to eq([])
     DiscourseSpamGuard::Account.create!(user: user, allowed: true)
-    SiteSetting.spam_guard_pro_enabled = true
+    plugin.stubs(:enabled?).returns(true)
     expect { DiscourseSpamGuard::Checker.call(user, source: "manual") }.not_to change(
       DiscourseSpamGuard::Scan,
       :count,

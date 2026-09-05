@@ -17,6 +17,7 @@ module("Integration | Component | SpamGuardStatus", function (hooks) {
       action_taken: "review",
       evidence: [],
       policy: {
+        weights: { confirmed_spam: 80, local_cap: 100 },
         assessment: {
           external_decision: "allow",
           base_score: 0,
@@ -42,21 +43,28 @@ module("Integration | Component | SpamGuardStatus", function (hooks) {
     assert
       .dom(".spam-guard-evidence")
       .includesText(
-        i18n("spam_guard.dashboard.local_signals"),
-        "local evidence has its own section"
+        i18n("spam_guard.dashboard.configured_weights", {
+          spam_points: 80,
+          cap: 100,
+        }),
+        "the explanation uses the saved weights and cap"
       );
     assert
       .dom(".spam-guard-evidence")
       .includesText(
-        i18n("spam_guard.dashboard.local_points", {
-          duplicate: 20,
-          burst: 15,
-          posting: 25,
-          history: 0,
-          total: 25,
-        }),
-        "correlated contributions show the cap"
+        i18n("spam_guard.dashboard.local_signals"),
+        "local evidence has its own section"
       );
+    assert.dom(".spam-guard-evidence").includesText(
+      i18n("spam_guard.dashboard.local_points", {
+        duplicate: 20,
+        burst: 15,
+        posting: 25,
+        history: 0,
+        total: 25,
+      }),
+      "correlated contributions show the cap"
+    );
     assert
       .dom(".spam-guard-evidence")
       .includesText(

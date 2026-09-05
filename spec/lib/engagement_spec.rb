@@ -44,22 +44,22 @@ RSpec.describe DiscourseSpamGuard::Engagement do
       user.user_stat.update!(time_read: 60)
       expect(described_class.snapshot(user, source: "recheck")).to include(
         "level" => "meaningful",
-        "adjustment" => -15,
+        "adjustment" => -10,
       )
     end
 
     it "caps reassurance and requires repeat visits for the strongest adjustment" do
       user.user_stat.update!(topics_entered: 5, posts_read_count: 30, time_read: 600)
-      expect(described_class.snapshot(user, source: "recheck")).to include("adjustment" => -15)
+      expect(described_class.snapshot(user, source: "recheck")).to include("adjustment" => -10)
       user.user_stat.update!(days_visited: 2)
       snapshot = described_class.snapshot(user, source: "recheck")
       expect(snapshot).to include(
         "level" => "sustained",
-        "adjustment" => -30,
+        "adjustment" => -15,
         "reading_minutes" => 10.0,
       )
       user.user_stat.update!(topics_entered: 1000, posts_read_count: 10_000, time_read: 100_000)
-      expect(described_class.snapshot(user, source: "recheck")).to include("adjustment" => -30)
+      expect(described_class.snapshot(user, source: "recheck")).to include("adjustment" => -15)
       expect(snapshot["topics_viewed"]).to eq(5)
     end
 
@@ -69,6 +69,28 @@ RSpec.describe DiscourseSpamGuard::Engagement do
         "available" => false,
         "adjustment" => 0,
       )
+    end
+
+    it "uses the configured adjustment for each reading level" do
+      SiteSetting.spam_guard_no_reading_adjustment = 7
+      SiteSetting.spam_guard_reading_limited_adjustment = -2
+      SiteSetting.spam_guard_reading_meaningful_adjustment = -8
+      SiteSetting.spam_guard_reading_sustained_adjustment = -12
+      user.update!(created_at: 2.hours.ago)
+      expect(described_class.snapshot(user, source: "manual")["adjustment"]).to eq(7)
+      user.user_stat.update!(posts_read_count: 1)
+      expect(described_class.snapshot(user, source: "manual")["adjustment"]).to eq(-2)
+      user.user_stat.update!(topics_entered: 1, posts_read_count: 3, time_read: 60)
+      expect(described_class.snapshot(user, source: "manual")["adjustment"]).to eq(-8)
+      user.user_stat.update!(
+        topics_entered: 5,
+        posts_read_count: 30,
+        time_read: 600,
+        days_visited: 2,
+      )
+      expect(described_class.snapshot(user, source: "manual")["adjustment"]).to eq(-12)
+      SiteSetting.spam_guard_reading_sustained_adjustment = 0
+      expect(described_class.snapshot(user, source: "manual")["adjustment"]).to eq(0)
     end
   end
 end

@@ -1,5 +1,12 @@
 # Discourse Spam Guard
 
+## Permissions
+
+Persistent account exemptions are admin-only, including review-queue actions.
+Moderators can view review evidence, silence accounts under their normal
+permissions, and confirm existing restrictions. The plugin's admin dashboards,
+settings and API endpoints remain admin-only.
+
 ## Required core integration
 
 This development version requires the accompanying core changes in this checkout:
@@ -79,6 +86,12 @@ Independent staff silences and suspensions are preserved. Historical action labe
 describe the action at the time of a scan, not the account's current restriction.
 
 ## Development
+
+GitHub Actions uses Discourse's standard reusable plugin workflow on pull requests
+and pushes to `main`. It runs lint, backend, frontend, system and model annotation
+checks against upstream Discourse's `latest` branch. The free plugin's tests do
+not require the Pro extension. CI does not apply the local core changes listed
+above; integration checks may fail until those hooks are available upstream.
 
 Backend tests: `LOAD_PLUGINS=1 bin/rspec plugins/discourse-spam-guard/spec`.
 Browser tests: `bin/qunit --standalone --target discourse-spam-guard`.

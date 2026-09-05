@@ -19,8 +19,9 @@ module DiscourseSpamGuard
 
         fields = Client.identifiers(user)
         result = Client.new.lookup(fields, bypass_cache: source == "manual")
-        engagement = Engagement.snapshot(user, source: source)
-        local_signals = LocalSignals.snapshot(user)
+        weights = Policy.weights
+        engagement = Engagement.snapshot(user, source: source, weights: weights)
+        local_signals = LocalSignals.snapshot(user, weights: weights)
         additional_evidence = AdditionalEvidence.collect(user_id: user.id, source: source)
         scan = nil
         user.with_lock do
@@ -36,6 +37,7 @@ module DiscourseSpamGuard
             "adjustment" => 0,
           } unless SiteSetting.spam_guard_local_signals
           settings = Policy.settings
+          settings["weights"] = weights
           settings["assessment"] = Policy.assess(
             result["evidence"],
             settings,

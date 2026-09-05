@@ -2,6 +2,7 @@
 
 RSpec.describe ReviewableSpamGuard do
   fab!(:admin)
+  fab!(:moderator)
   fab!(:user)
   let(:review) do
     described_class.needs_review!(
@@ -12,6 +13,19 @@ RSpec.describe ReviewableSpamGuard do
   end
 
   before { SiteSetting.spam_guard_enabled = true }
+
+  it "offers persistent exemptions only to admins while retaining moderator silence actions" do
+    expect(review.actions_for(admin.guardian).has?(:allow_account)).to eq(true)
+    expect(review.actions_for(moderator.guardian).has?(:allow_account)).to eq(false)
+    expect(review.actions_for(moderator.guardian).has?(:silence_account)).to eq(true)
+
+    expect { review.perform(moderator, :allow_account) }.to raise_error(Reviewable::InvalidAction)
+    expect(review.reload).to be_pending
+    expect(DiscourseSpamGuard::Account.where(user: user)).to be_empty
+
+    expect(review.perform(moderator, :silence_account)).to be_success
+    expect(user.reload).to be_silenced
+  end
 
   it "records a staff decision without attributing it to external reputation" do
     result = review.perform(admin, :silence_account)

@@ -12,6 +12,31 @@ RSpec.describe DiscourseSpamGuard::LocalSignals do
   end
 
   describe ".snapshot" do
+    it "detects repeated posts after core's short duplicate window expires" do
+      SiteSetting.unique_posts_mins = 5
+      topics = Fabricate.times(3, :topic)
+      raw = "An identical substantial post repeated across several public topics."
+      first = PostCreator.create(user, topic_id: topics[0].id, raw: raw)
+      expect(first.errors).to be_empty
+      blocked = PostCreator.create(user, topic_id: topics[1].id, raw: raw)
+      expect(blocked.errors[:raw]).to include(I18n.t(:just_posted_that))
+
+      # Expire Redis's real-time guard as well as advancing the application clock.
+      Discourse.redis.expire(first.unique_post_key, 0)
+      freeze_time 6.minutes.from_now
+      second = PostCreator.create(user, topic_id: topics[1].id, raw: raw)
+      expect(second.errors).to be_empty
+      Discourse.redis.expire(second.unique_post_key, 0)
+      freeze_time 6.minutes.from_now
+      third = PostCreator.create(user, topic_id: topics[2].id, raw: raw)
+      expect(third.errors).to be_empty
+
+      expect(described_class.snapshot(user)).to include(
+        "duplicate_posts" => 3,
+        "duplicate_points" => 20,
+      )
+    end
+
     it "leaves an inactive unconfirmed account neutral" do
       user.update!(active: false, created_at: 3.days.ago)
 
@@ -81,8 +106,8 @@ RSpec.describe DiscourseSpamGuard::LocalSignals do
       expect(described_class.snapshot(user)).to include("posts_sampled" => 0, "adjustment" => 0)
     end
 
-    it "counts distinct staff-confirmed spam posts and caps the total" do
-      3.times do
+    it "counts distinct staff-confirmed spam posts before the final assessment cap" do
+      3.times do |index|
         post = Fabricate(:post, user: user)
         reviewable =
           Fabricate(
@@ -102,12 +127,65 @@ RSpec.describe DiscourseSpamGuard::LocalSignals do
             status: :agreed,
           )
         end
+        expected_points = (index + 1) * 80
+        expect(described_class.snapshot(user)["history_points"]).to eq(expected_points)
       end
 
       expect(described_class.snapshot(user)).to include(
         "confirmed_spam_posts" => 3,
-        "history_points" => 50,
-        "adjustment" => 50,
+        "history_points" => 240,
+        "adjustment" => 240,
+      )
+    end
+
+    it "multiplies confirmed posts by the configured weight before assessment caps" do
+      SiteSetting.spam_guard_confirmed_spam_points = 70
+      SiteSetting.spam_guard_local_points_cap = 85
+      2.times do |index|
+        review =
+          Fabricate(
+            :reviewable_flagged_post,
+            target_created_by: user,
+            status: :approved,
+            reviewable_scores: [],
+          )
+        Fabricate(
+          :reviewable_score,
+          reviewable: review,
+          reviewable_score_type: ReviewableScore.types[:spam],
+          reviewed_by: admin,
+          reviewed_at: Time.current,
+          status: :agreed,
+        )
+        expect(described_class.snapshot(user)).to include(
+          "history_points" => ((index + 1) * 70),
+          "adjustment" => ((index + 1) * 70),
+        )
+      end
+    end
+
+    it "samples enough confirmed posts when the per-post weight is reduced" do
+      SiteSetting.spam_guard_confirmed_spam_points = 20
+      6.times do
+        review =
+          Fabricate(
+            :reviewable_flagged_post,
+            target_created_by: user,
+            status: :approved,
+            reviewable_scores: [],
+          )
+        Fabricate(
+          :reviewable_score,
+          reviewable: review,
+          reviewable_score_type: ReviewableScore.types[:spam],
+          reviewed_by: admin,
+          reviewed_at: Time.current,
+          status: :agreed,
+        )
+      end
+      expect(described_class.snapshot(user)).to include(
+        "confirmed_spam_posts" => 6,
+        "history_points" => 120,
       )
     end
 
