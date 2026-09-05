@@ -40,15 +40,13 @@ module("Integration | Component | SpamGuardStatus", function (hooks) {
       },
     };
     await render(<template><SpamGuardEvidence @scan={{scan}} /></template>);
-    assert
-      .dom(".spam-guard-evidence")
-      .includesText(
-        i18n("spam_guard.dashboard.configured_weights", {
-          spam_points: 80,
-          cap: 100,
-        }),
-        "the explanation uses the saved weights and cap"
-      );
+    assert.dom(".spam-guard-evidence").includesText(
+      i18n("spam_guard.dashboard.configured_weights", {
+        spam_points: 80,
+        cap: 100,
+      }),
+      "the explanation uses the saved weights and cap"
+    );
     assert
       .dom(".spam-guard-evidence")
       .includesText(
