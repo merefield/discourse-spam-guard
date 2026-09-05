@@ -12,9 +12,11 @@ class ReviewableSpamGuard < Reviewable
 
   def build_actions(actions, guardian, args)
     return unless pending? && guardian.is_staff? && guardian.user.human? && target && !target.staff?
-    actions.add(:allow_account) do |action|
-      action.icon = "user-check"
-      action.label = "spam_guard.allow"
+    if guardian.is_admin?
+      actions.add(:allow_account) do |action|
+        action.icon = "user-check"
+        action.label = "spam_guard.allow"
+      end
     end
     if target.silenced? || target.suspended?
       actions.add(:confirm_restriction) do |action|

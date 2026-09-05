@@ -1,5 +1,12 @@
 # Discourse Spam Guard
 
+## Permissions
+
+Persistent account exemptions are admin-only, including review-queue actions.
+Moderators can view review evidence, silence accounts under their normal
+permissions, and confirm existing restrictions. The plugin's admin dashboards,
+settings and API endpoints remain admin-only.
+
 ## Required core integration
 
 This development version requires the accompanying core changes in this checkout:
