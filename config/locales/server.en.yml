@@ -1,0 +1,29 @@
+en:
+  site_settings:
+    spam_guard_enabled: "Check new accounts against Stop Forum Spam. Sends enabled identifiers to the selected external service. Start in Observe mode to evaluate results."
+    spam_guard_mode: "Observe records evidence only. Review queues accounts that meet the reputation or local-signal review rules. Protect also silences new accounts with strong email evidence under the selected preset. Manual checks and local signals never authorize an automatic silence."
+    spam_guard_preset: "Conservative requires strong, recent email and IP evidence for automatic silencing. Balanced requires strong, recent email evidence. IP or username alone never automatically silences."
+    spam_guard_check_email: "Check account email addresses against Stop Forum Spam."
+    spam_guard_check_ip: "Check public registration IP addresses. Shared addresses alone never automatically silence an account."
+    spam_guard_check_username: "Check usernames as informational evidence. Username matches alone never cause review or silencing."
+    spam_guard_local_signals: "Include exact duplicate posts, posting bursts across public topics, and staff-confirmed spam flags in account assessments. Eligible new accounts are rechecked after posting or a flag review. Local signals can request review but never authorize a silence. Start with {{setting:spam_guard_mode}} set to Observe."
+    spam_guard_region: "Send lookups to the closest Stop Forum Spam endpoint or its European endpoint."
+    spam_guard_recheck_hours: "Recheck new accounts once after this many hours; 0 disables the delayed check. Established, staff, and explicitly allowed accounts are skipped."
+    spam_guard_retention_days: "Keep check history for this many days. Evidence for pending reviews and account exceptions is retained until resolved or removed."
+    spam_guard_email_confidence: "Minimum email reputation score for strong evidence. This is not a probability that the account is a spammer."
+    spam_guard_email_frequency: "Minimum number of email reports for strong evidence."
+    spam_guard_ip_confidence: "Minimum IP reputation score for strong evidence."
+    spam_guard_ip_frequency: "Minimum number of IP reports for strong evidence."
+    spam_guard_max_evidence_age_days: "Reports older than this are informational and cannot cause review or silencing."
+  spam_guard:
+    allow: "Allow this account"
+    confirm: "Silence account"
+    confirm_message: "Silence this account after reviewing the evidence?"
+    confirm_restriction: "Confirm existing restriction"
+    silence_reason: "Strong Stop Forum Spam reputation evidence. Review case #%{reviewable_id}."
+    manual_silence_reason: "Staff confirmed a Spam Guard review. Review case #%{reviewable_id}."
+    silence_failed: "The account restriction changed. Refresh the review before taking another action."
+    check_failed: "This account could not be checked. Enable Spam Guard and check that the account is eligible."
+  reviewables:
+    reasons:
+      spam_guard: "Reputation or local account evidence met this site's Spam Guard review policy."
