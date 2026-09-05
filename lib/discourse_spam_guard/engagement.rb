@@ -2,7 +2,7 @@
 
 module DiscourseSpamGuard
   class Engagement
-    def self.snapshot(user, source:)
+    def self.snapshot(user, source:, weights: Policy.weights)
       stats =
         UserStat.select(
           :topics_entered,
@@ -19,14 +19,14 @@ module DiscourseSpamGuard
       days = [stats.days_visited, 0].max
       level, adjustment =
         if topics >= 5 && posts >= 30 && seconds >= 600 && days >= 2
-          ["sustained", -30]
+          ["sustained", weights.fetch("reading_sustained")]
         elsif topics >= 1 && posts >= 3 && seconds >= 60
-          ["meaningful", -15]
+          ["meaningful", weights.fetch("reading_meaningful")]
         elsif topics.positive? || posts.positive? || seconds.positive?
-          ["limited", -5]
+          ["limited", weights.fetch("reading_limited")]
         elsif stats.post_count.positive? ||
               (source != "registration" && user.created_at <= 1.hour.ago)
-          ["none", 10]
+          ["none", weights.fetch("no_reading")]
         else
           ["new_account", 0]
         end

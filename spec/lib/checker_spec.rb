@@ -30,6 +30,68 @@ RSpec.describe DiscourseSpamGuard::Checker do
       expect(scan.attributes.to_json).not_to include(user.email)
     end
 
+    it "weights confirmed spam above reading reassurance and retains the configured snapshot" do
+      SiteSetting.spam_guard_mode = "protect"
+      stub_request(:post, "https://api.stopforumspam.org/api").to_return(
+        body: { success: 1, email: { appears: 0, frequency: 0 } }.to_json,
+      )
+      review =
+        Fabricate(
+          :reviewable_flagged_post,
+          target_created_by: user,
+          status: :approved,
+          reviewable_scores: [],
+        )
+      Fabricate(
+        :reviewable_score,
+        reviewable: review,
+        reviewable_score_type: ReviewableScore.types[:spam],
+        reviewed_by: admin,
+        reviewed_at: Time.current,
+        status: :agreed,
+      )
+      user.user_stat.update!(
+        topics_entered: 5,
+        posts_read_count: 30,
+        time_read: 600,
+        days_visited: 2,
+      )
+
+      original = described_class.call(user, source: "registration")
+      expect(original).to have_attributes(decision: "review", action_taken: "review")
+      expect(original.policy.dig("assessment", "score")).to eq(65)
+      expect(user.reload).not_to be_silenced
+
+      SiteSetting.spam_guard_confirmed_spam_points = 90
+      updated = described_class.call(user, source: "manual")
+      expect(updated.policy.dig("assessment", "score")).to eq(75)
+      expect(updated.policy.dig("weights", "confirmed_spam")).to eq(90)
+      expect(original.reload.policy.dig("weights", "confirmed_spam")).to eq(80)
+      expect(original.policy.dig("assessment", "score")).to eq(65)
+
+      SiteSetting.spam_guard_confirmed_spam_points = 80
+      second_review =
+        Fabricate(
+          :reviewable_flagged_post,
+          target_created_by: user,
+          status: :approved,
+          reviewable_scores: [],
+        )
+      Fabricate(
+        :reviewable_score,
+        reviewable: second_review,
+        reviewable_score_type: ReviewableScore.types[:spam],
+        reviewed_by: admin,
+        reviewed_at: Time.current,
+        status: :agreed,
+      )
+      repeated = described_class.call(user, source: "manual")
+      expect(repeated.policy.dig("assessment", "local_signals", "history_points")).to eq(160)
+      expect(repeated.policy.dig("assessment", "score")).to eq(100)
+      expect(repeated).to have_attributes(decision: "review", action_taken: "review")
+      expect(user.reload).not_to be_silenced
+    end
+
     it "queues evidence for review without restricting the account in review mode" do
       SiteSetting.spam_guard_mode = "review"
 
@@ -111,7 +173,7 @@ RSpec.describe DiscourseSpamGuard::Checker do
 
       expect(scan).to have_attributes(decision: "review", action_taken: "review")
       expect(user.reload).not_to be_silenced
-      expect(scan.policy["assessment"]).to include("external_decision" => "silence", "score" => 65)
+      expect(scan.policy["assessment"]).to include("external_decision" => "silence", "score" => 70)
       user.user_stat.update!(time_read: 600)
       expect(scan.reload.policy["assessment"]["engagement"]["reading_seconds"]).to eq(180)
     end

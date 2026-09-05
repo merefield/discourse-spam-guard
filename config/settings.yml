@@ -22,6 +22,30 @@ plugins:
     default: false
   spam_guard_local_signals:
     default: true
+  spam_guard_reading_limited_adjustment:
+    default: -5
+    min: -100
+    max: 0
+  spam_guard_reading_meaningful_adjustment:
+    default: -10
+    min: -100
+    max: 0
+  spam_guard_reading_sustained_adjustment:
+    default: -15
+    min: -100
+    max: 0
+  spam_guard_no_reading_adjustment:
+    default: 10
+    min: 0
+    max: 100
+  spam_guard_confirmed_spam_points:
+    default: 80
+    min: 0
+    max: 100
+  spam_guard_local_points_cap:
+    default: 100
+    min: 0
+    max: 100
   spam_guard_region:
     default: closest
     type: enum

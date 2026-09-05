@@ -12,9 +12,8 @@ module DiscourseSpamGuard
     HISTORY_WINDOW = 30.days
     HISTORY_LIMIT = 3
     POSTING_CAP = 25
-    TOTAL_CAP = 50
 
-    def self.snapshot(user)
+    def self.snapshot(user, weights: Policy.weights)
       return { "enabled" => false, "adjustment" => 0 } unless SiteSetting.spam_guard_local_signals
 
       recent_posts =
@@ -61,15 +60,27 @@ module DiscourseSpamGuard
           reviewed_by_id: staff,
           reviewed_at: HISTORY_WINDOW.ago..Time.current,
         )
+      points_per_post = weights.fetch("confirmed_spam")
+      reassurance =
+        -weights.values_at("reading_limited", "reading_meaningful", "reading_sustained").min
+      history_limit =
+        if points_per_post.positive?
+          [
+            HISTORY_LIMIT,
+            ((weights.fetch("local_cap") + reassurance).fdiv(points_per_post)).ceil,
+          ].max
+        else
+          HISTORY_LIMIT
+        end
       confirmed_posts =
         ReviewableFlaggedPost
           .approved
           .where(target_created_by: user)
           .where(confirmed_scores.arel.exists)
-          .limit(HISTORY_LIMIT)
+          .limit(history_limit)
           .pluck(:target_id)
           .size
-      history_points = [confirmed_posts * 25, TOTAL_CAP].min
+      history_points = confirmed_posts * points_per_post
 
       {
         "enabled" => true,
@@ -81,7 +92,7 @@ module DiscourseSpamGuard
         "posting_points" => posting_points,
         "confirmed_spam_posts" => confirmed_posts,
         "history_points" => history_points,
-        "adjustment" => [posting_points + history_points, TOTAL_CAP].min,
+        "adjustment" => posting_points + history_points,
         "posts_sampled" => posts.size,
       }
     end

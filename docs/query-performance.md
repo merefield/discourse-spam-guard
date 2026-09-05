@@ -13,8 +13,12 @@ public posts to 100 before the outer projection computes content hashes. Only
 topic IDs, timestamps and hashes reach Ruby. The populated query plan confirms
 that hashing occurs above the limit.
 
-History uses EXISTS for matching scores and stops after three qualifying
-reviewables. Discourse's unique (type, target_id) index guarantees each flagged
+History uses EXISTS for matching scores and normally stops after three qualifying
+reviewables. Lower configured per-post weights increase the bound to enough posts
+to reach the local cap even with the strongest configured reading reassurance:
+`max(3, ceil((local_cap + reassurance) / points_per_post))`. A zero weight uses
+three rows for review evidence; positive weights require at most 200 rows under
+the setting bounds. Discourse's unique (type, target_id) index guarantees each flagged
 post is counted once. No DISTINCT, duplicate flag expansion or deduplication sort
 is needed. The populated plan uses existing author and score-reviewable indexes.
 

@@ -14,8 +14,12 @@ These correlated metrics produce one adjustment, not three independent votes:
 | Zero reading on a new account | 0 |
 | Zero reading after posting, or a later check at least one hour after signup | +10 |
 | Any reading, below the following thresholds | -5 |
-| At least 1 topic, 3 posts and 60 seconds | -15 |
-| At least 5 topics, 30 posts, 600 seconds and 2 days visited | -30, capped |
+| At least 1 topic, 3 posts and 60 seconds | -10 |
+| At least 5 topics, 30 posts, 600 seconds and 2 days visited | -15 |
+
+These are configurable defaults. The four adjustments live in the plugin's admin
+settings; reading rewards range from -100 to 0 and the no-reading adjustment from
+0 to 100. Missing statistics and fresh-account neutrality remain fixed at zero.
 
 Days visited corroborates repeat visits; it does not prove reading occurred on
 each day. Time recorded by Discourse is a proxy for attention, not proof. Counters
@@ -23,7 +27,10 @@ can be gamed. Initial thresholds are heuristics requiring validation against act
 moderator outcomes; they are neither calibrated probabilities nor percentages.
 
 External evidence supplies 0 (no significant match), 20 (weak), 50 (review), or
-80 (silence) base points. Add the engagement adjustment and clamp to 0–100.
+80 (silence) base points. Add the engagement adjustment to local evidence, apply
+the configured upper local cap (default 100), then add external base points and
+clamp the final score to 0–100. Negative reading adjustments can reduce external
+concern when local evidence is absent. No intermediate zero-floor removes them.
 Zero reading alone changes a clear assessment to “Some concern”; it never creates
 a review or sanction. A silence recommendation below 75 points becomes review.
 Strong external evidence always requires at least review, and weak external
@@ -34,9 +41,9 @@ Missing or failed provider checks remain unknown and unscored regardless of
 engagement. Staff, age, trust-level and exception exclusions remain in force.
 Existing independent moderation is not undone when a later score improves.
 
-Policy version 3 also adds the capped [local signals](local-signals.md) contribution
+Policy version 5 also adds the [local signals](local-signals.md) contribution
 to the displayed score. Those points can request review but cannot restore a
 silence recommendation reduced by reading. Engagement is evaluated on registration,
 delayed, manual and activity checks. There is no periodic sweep. Old scans
 without an assessment retain their original presentation. Pro may later add
-configurable weights and trends, while this assessment and its explanation stay free.
+trends, while configurable basic weights, this assessment and its explanation stay free.

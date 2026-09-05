@@ -2,6 +2,48 @@
 
 RSpec.describe DiscourseSpamGuard::Policy do
   describe ".assess" do
+    it "retains review for confirmed spam even when its configured contribution is zero" do
+      SiteSetting.spam_guard_local_points_cap = 0
+      %w[checked unknown].each do |status|
+        assessment =
+          described_class.assess(
+            {},
+            described_class.settings,
+            engagement: {
+              "adjustment" => -15,
+            },
+            status: status,
+            local_signals: {
+              "confirmed_spam_posts" => 1,
+              "adjustment" => 0,
+            },
+          )
+        expect(assessment["decision"]).to eq("review")
+      end
+    end
+
+    it "applies the configured combined cap to local and extension evidence" do
+      SiteSetting.spam_guard_local_points_cap = 90
+      assessment =
+        described_class.assess(
+          {},
+          described_class.settings,
+          engagement: {
+            "adjustment" => -15,
+          },
+          status: "checked",
+          local_signals: {
+            "confirmed_spam_posts" => 1,
+            "adjustment" => 80,
+          },
+          additional_evidence: [{ "label" => "Additional evidence", "points" => 25 }],
+        )
+      expect(assessment).to include(
+        "score" => 90,
+        "additional_points" => 25,
+        "decision" => "review",
+      )
+    end
     it "requests local review during an outage without inventing an external score" do
       assessment =
         described_class.assess(
