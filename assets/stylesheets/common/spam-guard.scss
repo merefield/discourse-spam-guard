@@ -337,3 +337,35 @@
     }
   }
 }
+
+.spam-guard-submission {
+  margin-block-start: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--primary-low);
+  border-radius: var(--d-border-radius);
+  overflow-wrap: anywhere;
+
+  &__preview-data {
+    margin-block-start: 1rem;
+
+    dl {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+      gap: 1rem;
+    }
+
+    dd {
+      margin: 0;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      max-height: 20rem;
+      overflow: auto;
+      padding: 1rem;
+      background: var(--primary-very-low);
+      color: var(--primary);
+    }
+  }
+}

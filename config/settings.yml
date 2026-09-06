@@ -120,3 +120,8 @@ plugins:
     default: 5
     min: 1
     max: 10000
+  spam_guard_submissions_enabled:
+    default: false
+  spam_guard_submission_api_key:
+    default: ""
+    secret: true

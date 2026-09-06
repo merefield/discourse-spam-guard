@@ -43,7 +43,7 @@ weights, thresholds and the distinction between scores and automatic actions.
   Summary data is batch loaded; browsing users never calls the provider. This
   uses the `admin-users-list-thead-after` and `admin-users-list-td-after` outlets
   and the `admin_user_list` serializer extension,
-  with an `AdminUserIndexQuery` prepend to batch load the page's saved results.
+  with a reloadable controller extension to batch load the page's saved results.
 - Exceptions remain manageable while automatic checks are disabled.
 - HTTPS, bounded requests, hashed cache keys, provider concurrency limiting,
   bounded retries and an outage circuit breaker.
@@ -52,7 +52,8 @@ weights, thresholds and the distinction between scores and automatic actions.
 
 This is an initial development implementation, not a published release. The Pro
 extension currently establishes the dependency boundary; its additional workflows
-are not implemented yet. External spam reporting is also not implemented.
+are not implemented yet. Individual confirmed-spam reporting is included in the
+free plugin; see [reporting setup, safeguards and recovery](docs/submissions.md).
 
 ## Local installation
 

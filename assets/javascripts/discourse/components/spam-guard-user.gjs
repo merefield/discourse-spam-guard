@@ -11,6 +11,7 @@ import DButton from "discourse/ui-kit/d-button";
 import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import SpamGuardEvidence from "./spam-guard-evidence";
+import SpamGuardSubmission from "./spam-guard-submission";
 
 export default class SpamGuardUser extends Component {
   @service currentUser;
@@ -199,6 +200,13 @@ export default class SpamGuardUser extends Component {
                 @scan={{this.state.scan}}
                 @exempt={{this.state.allowed}}
               />
+              {{#if this.canManage}}
+                <SpamGuardSubmission
+                  @userId={{@user.id}}
+                  @configured={{this.state.submission_configured}}
+                  @submission={{this.state.submission}}
+                />
+              {{/if}}
             {{/if}}
           {{/if}}
         </div>

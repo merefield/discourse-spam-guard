@@ -1,5 +1,7 @@
 en:
   site_settings:
+    spam_guard_submissions_enabled: "Allow admins to preview and explicitly submit locally confirmed spam to Stop Forum Spam. Requires a submission API key. Reporting sends the account username, email, public registration IP and the previewed evidence, independently of lookup identifier settings. Risk scores never trigger submission."
+    spam_guard_submission_api_key: "Your site's Stop Forum Spam submission API key. Required only for reporting, not reputation lookups. Keep this key private."
     spam_guard_external_weak_points: "Risk points for weak or informational matches, including usernames and stale evidence. These matches alone never request review or automatic silencing."
     spam_guard_email_moderate_points: "Risk points for recent email evidence meeting the moderate email thresholds. This evidence requests review, but cannot authorize automatic silencing."
     spam_guard_email_strong_points: "Risk points for email evidence meeting the existing strong email thresholds. Scoring weights do not change automatic-silencing eligibility."
@@ -32,6 +34,7 @@ en:
     spam_guard_ip_frequency: "Minimum number of IP reports for strong evidence."
     spam_guard_max_evidence_age_days: "Reports older than this are informational and cannot cause review or silencing."
   spam_guard:
+    submission_failed: "The report could not be approved. Refresh the preview, check reporting settings, and explicitly confirm the evidence."
     allow: "Allow this account"
     confirm: "Silence account"
     confirm_message: "Silence this account after reviewing the evidence?"
