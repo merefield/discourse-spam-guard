@@ -7,11 +7,13 @@ ordinary reputation lookups do not require it. Reporting has its own controls an
 does not depend on the lookup enable switch or identifier lookup settings.
 
 Open an account's admin Spam Guard dashboard and choose the report preview.
-The preview shows the exact username, email, registration IP and evidence that
+The confirmation dialog shows the destination and exact username, email, registration IP and evidence that
 will be transmitted. Evidence contains the public post URL and up to 2,000
 characters of its raw content. Review it for unrelated sensitive information;
 do not approve a report containing material that should not be shared. Check the
-explicit approval box and submit. Preview approval expires after ten minutes.
+explicit approval box and submit, or cancel without sending anything. The dialog
+also discloses server-side API key authentication and the JSON response request;
+the secret key is never sent to the browser. Preview approval expires after ten minutes.
 
 ## Eligibility and permissions
 

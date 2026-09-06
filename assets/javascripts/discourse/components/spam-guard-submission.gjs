@@ -9,6 +9,7 @@ import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import getURL from "discourse/lib/get-url";
 import DButton from "discourse/ui-kit/d-button";
+import DModal from "discourse/ui-kit/d-modal";
 import DRelativeDate from "discourse/ui-kit/d-relative-date";
 import { i18n } from "discourse-i18n";
 
@@ -74,6 +75,13 @@ export default class SpamGuardSubmission extends Component {
       ) {
         this.busy = false;
       }
+    }
+  }
+
+  @action
+  closePreview() {
+    if (!this.busy) {
+      this.result = undefined;
     }
   }
 
@@ -174,35 +182,57 @@ export default class SpamGuardSubmission extends Component {
           class="btn-default spam-guard-submission__preview"
         />
         {{#if this.result.preview}}
-          <div class="spam-guard-submission__preview-data">
-            <h4>{{i18n "spam_guard.submission.preview_title"}}</h4>
-            <p>{{i18n "spam_guard.submission.disclosure"}}</p>
-            <dl>
-              <div><dt>{{i18n "spam_guard.submission.username"}}</dt><dd
-                >{{this.result.preview.username}}</dd></div>
-              <div><dt>{{i18n "spam_guard.submission.email"}}</dt><dd
-                >{{this.result.preview.email}}</dd></div>
-              <div><dt>{{i18n "spam_guard.submission.ip"}}</dt><dd
-                >{{this.result.preview.ip_address}}</dd></div>
-            </dl>
-            <h4>{{i18n "spam_guard.submission.evidence"}}</h4>
-            <pre>{{this.result.preview.evidence}}</pre>
-            <Form @onSubmit={{this.submit}} as |form|>
-              <form.Field
-                @name="confirmed"
-                @title={{i18n "spam_guard.submission.confirm"}}
-                @type="checkbox"
-                @validation="accepted"
-                as |field|
-              >
-                <field.Control />
-              </form.Field>
-              <form.Submit
-                @label="spam_guard.submission.submit"
+          <DModal
+            @title={{i18n "spam_guard.submission.preview_title"}}
+            @closeModal={{this.closePreview}}
+            @dismissable={{if this.busy false true}}
+            @submitOnEnter={{false}}
+            class="spam-guard-submission-confirmation"
+          >
+            <:body>
+              <p>{{i18n "spam_guard.submission.disclosure"}}</p>
+              <dl class="spam-guard-submission-confirmation__fields">
+                <div><dt>{{i18n "spam_guard.submission.destination"}}</dt><dd
+                  >{{this.result.preview.destination}}</dd></div>
+                <div><dt>{{i18n "spam_guard.submission.username"}}</dt><dd
+                  >{{this.result.preview.username}}</dd></div>
+                <div><dt>{{i18n "spam_guard.submission.email"}}</dt><dd
+                  >{{this.result.preview.email}}</dd></div>
+                <div><dt>{{i18n "spam_guard.submission.ip"}}</dt><dd
+                  >{{this.result.preview.ip_address}}</dd></div>
+              </dl>
+              <h3>{{i18n "spam_guard.submission.evidence"}}</h3>
+              <p>{{i18n "spam_guard.submission.evidence_description"}}</p>
+              <pre
+                class="spam-guard-submission-confirmation__evidence"
+              >{{this.result.preview.evidence}}</pre>
+              <p>{{i18n "spam_guard.submission.authentication"}}</p>
+              <p>{{i18n "spam_guard.submission.response_format"}}</p>
+              <Form @onSubmit={{this.submit}} as |form|>
+                <form.Field
+                  @name="confirmed"
+                  @title={{i18n "spam_guard.submission.confirm"}}
+                  @type="checkbox"
+                  @validation="accepted"
+                  as |field|
+                >
+                  <field.Control />
+                </form.Field>
+                <form.Submit
+                  @label="spam_guard.submission.submit"
+                  @disabled={{this.busy}}
+                />
+              </Form>
+            </:body>
+            <:footer>
+              <DButton
+                @label="cancel"
+                @action={{this.closePreview}}
                 @disabled={{this.busy}}
+                class="btn-default spam-guard-submission-confirmation__cancel"
               />
-            </Form>
-          </div>
+            </:footer>
+          </DModal>
         {{else if this.result.configured}}
           {{#unless this.report}}
             <p class="spam-guard-submission__ineligible">{{i18n

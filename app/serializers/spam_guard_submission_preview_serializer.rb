@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class SpamGuardSubmissionPreviewSerializer < ApplicationSerializer
-  attributes :username, :email, :ip_address, :evidence, :post_id, :token
+  attributes :username, :email, :ip_address, :evidence, :post_id, :token, :destination
+  def destination
+    DiscourseSpamGuard::SubmissionClient::ENDPOINT
+  end
   def username
     object.payload["username"]
   end

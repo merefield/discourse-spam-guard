@@ -1,5 +1,6 @@
 import { click, render } from "@ember/test-helpers";
 import { module, test } from "qunit";
+import ModalContainer from "discourse/components/modal-container";
 import { setupRenderingTest } from "discourse/tests/helpers/component-test";
 import pretender, { response } from "discourse/tests/helpers/create-pretender";
 import form from "discourse/tests/helpers/form-kit-helper";
@@ -22,6 +23,7 @@ module("Integration | Component | SpamGuardSubmission", function (hooks) {
           configured: true,
           submission: null,
           preview: {
+            destination: "https://www.stopforumspam.com/add",
             username: "spammer",
             email: "spam@example.com",
             ip_address: "8.8.4.4",
@@ -58,22 +60,41 @@ module("Integration | Component | SpamGuardSubmission", function (hooks) {
     );
     await render(
       <template>
+        <ModalContainer />
         <SpamGuardSubmission @userId={{42}} @configured={{true}} />
       </template>
     );
     await click(".spam-guard-submission__preview");
-    assert.strictEqual(submissions, 0, "preview does not submit externally");
     assert
-      .dom(".spam-guard-submission__preview-data")
+      .dom(".spam-guard-submission-confirmation")
+      .hasAttribute("role", "dialog", "approval opens a modal dialog");
+    assert
+      .dom(".spam-guard-submission-confirmation")
+      .includesText(
+        "https://www.stopforumspam.com/add",
+        "destination is shown"
+      );
+    assert
+      .dom(".spam-guard-submission-confirmation")
+      .includesText("spammer", "exact username is shown");
+    assert.strictEqual(submissions, 0, "preview does not submit externally");
+    await click(".spam-guard-submission-confirmation__cancel");
+    assert
+      .dom(".spam-guard-submission-confirmation")
+      .doesNotExist("cancel closes the preview");
+    assert.strictEqual(submissions, 0, "cancel does not submit anything");
+    await click(".spam-guard-submission__preview");
+    assert
+      .dom(".spam-guard-submission-confirmation")
       .includesText("spam@example.com", "exact email is visible");
     assert
-      .dom(".spam-guard-submission__preview-data")
+      .dom(".spam-guard-submission-confirmation")
       .includesText("8.8.4.4", "exact registration IP is visible");
     assert
-      .dom(".spam-guard-submission pre")
+      .dom(".spam-guard-submission-confirmation pre")
       .includesText("<script>", "evidence is rendered as text");
     assert
-      .dom(".spam-guard-submission script")
+      .dom(".spam-guard-submission-confirmation script")
       .doesNotExist("evidence cannot inject markup");
     await form().submit();
     assert.strictEqual(submissions, 0, "unchecked approval blocks submission");
@@ -87,7 +108,7 @@ module("Integration | Component | SpamGuardSubmission", function (hooks) {
         "delivery status is shown"
       );
     assert
-      .dom(".spam-guard-submission form")
+      .dom(".spam-guard-submission-confirmation form")
       .doesNotExist("approval form disappears after queueing");
   });
 
@@ -99,6 +120,7 @@ module("Integration | Component | SpamGuardSubmission", function (hooks) {
     );
     await render(
       <template>
+        <ModalContainer />
         <SpamGuardSubmission
           @userId={{42}}
           @configured={{true}}
@@ -114,7 +136,7 @@ module("Integration | Component | SpamGuardSubmission", function (hooks) {
         "uncertain delivery explains why retry is blocked"
       );
     assert
-      .dom(".spam-guard-submission form")
+      .dom(".spam-guard-submission-confirmation form")
       .doesNotExist("no blind retry is offered");
   });
 
@@ -122,6 +144,7 @@ module("Integration | Component | SpamGuardSubmission", function (hooks) {
     this.currentUser.setProperties({ admin: false, moderator: true });
     await render(
       <template>
+        <ModalContainer />
         <SpamGuardSubmission @userId={{42}} @configured={{true}} />
       </template>
     );
@@ -133,6 +156,7 @@ module("Integration | Component | SpamGuardSubmission", function (hooks) {
   test("unconfigured reporting links to the relevant site settings", async function (assert) {
     await render(
       <template>
+        <ModalContainer />
         <SpamGuardSubmission @userId={{42}} @configured={{false}} />
       </template>
     );
@@ -144,7 +168,7 @@ module("Integration | Component | SpamGuardSubmission", function (hooks) {
         "configuration has a direct entry point"
       );
     assert
-      .dom(".spam-guard-submission form")
+      .dom(".spam-guard-submission-confirmation form")
       .doesNotExist("configuration does not authorize a report");
   });
 });

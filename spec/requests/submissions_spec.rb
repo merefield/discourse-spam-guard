@@ -31,6 +31,7 @@ RSpec.describe DiscourseSpamGuard::AdminController do
       expect(response.status).to eq(200)
       expect(response.parsed_body["preview"]).to include(
         "email" => user.email,
+        "destination" => DiscourseSpamGuard::SubmissionClient::ENDPOINT,
         "ip_address" => user.registration_ip_address.to_s,
         "post_id" => spam_post.id,
       )
