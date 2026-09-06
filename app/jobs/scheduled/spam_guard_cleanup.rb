@@ -6,6 +6,7 @@ module Jobs
 
     def execute(_args)
       DiscourseSpamGuard::Scan.expire!
+      DiscourseSpamGuard::Submission.where.not(user_id: User.select(:id)).in_batches.delete_all
       DiscourseSpamGuard::Account.where.not(user_id: User.select(:id)).in_batches.delete_all
       DiscourseSpamGuard::Scan.where.not(user_id: User.select(:id)).in_batches.delete_all
     end

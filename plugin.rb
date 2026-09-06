@@ -2,11 +2,11 @@
 
 # name: discourse-spam-guard
 # about: Explainable Stop Forum Spam reputation checks and moderation tools.
-# version: 0.1.3
+# version: 0.1.4
 # authors: Robert Barrow
 # url: https://github.com/merefield/discourse-spam-guard
 
-enabled_site_setting :spam_guard_enabled
+# Admin reporting and recovery remain available independently of lookup activation.
 register_asset "stylesheets/common/spam-guard.scss"
 %w[
   circle-check
@@ -72,11 +72,13 @@ after_initialize do
   # Privacy cleanup must also run while automatic checking is disabled.
   # rubocop:disable Discourse/Plugins/UsePluginInstanceOn
   DiscourseEvent.on(:user_destroyed) do |user|
+    DiscourseSpamGuard::Submission.where(user_id: user.id).delete_all
     DiscourseSpamGuard::Scan.where(user_id: user.id).delete_all
     DiscourseSpamGuard::Account.where(user_id: user.id).delete_all
   end
 
   DiscourseEvent.on(:user_anonymized) do |user:, **_opts|
+    DiscourseSpamGuard::Submission.where(user_id: user.id).delete_all
     DiscourseSpamGuard::Scan.where(user_id: user.id).delete_all
     DiscourseSpamGuard::Account.where(user_id: user.id).delete_all
   end

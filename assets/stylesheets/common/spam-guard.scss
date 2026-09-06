@@ -337,3 +337,39 @@
     }
   }
 }
+
+.spam-guard-submission {
+  margin-block-start: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--primary-low);
+  border-radius: var(--d-border-radius);
+  overflow-wrap: anywhere;
+}
+
+.spam-guard-submission-confirmation {
+  overflow-wrap: anywhere;
+
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: 1rem;
+
+    dd {
+      margin: 0;
+    }
+
+    dt {
+      font-weight: bold;
+    }
+  }
+
+  &__evidence {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 20rem;
+    overflow: auto;
+    padding: 1rem;
+    background: var(--primary-very-low);
+    color: var(--primary);
+  }
+}

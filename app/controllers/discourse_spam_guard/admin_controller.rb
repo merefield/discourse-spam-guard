@@ -4,7 +4,7 @@ module DiscourseSpamGuard
   # Recovery and audit access must remain available after automatic checks are disabled.
   # rubocop:disable Discourse/Plugins/CallRequiresPlugin
   class AdminController < ::Admin::AdminController
-    before_action :limit_checks, only: %i[check test_connection]
+    before_action :limit_checks, only: %i[check test_connection submission submit_report]
 
     def index
       scans = Scan.includes(:user).order(id: :desc).limit(50)
@@ -38,7 +38,11 @@ module DiscourseSpamGuard
     def account
       user = User.find(params[:user_id])
       scan = Scan.where(user: user).latest.first
+      report = Submission.find_by(user: user)
       render json: {
+               submission_configured: SubmissionCandidate.configured?,
+               submission:
+                 report && SpamGuardSubmissionSerializer.new(report, scope: guardian, root: false),
                allowed: Account.exists?(user: user, allowed: true),
                enabled: DiscourseSpamGuard.enabled?,
                scan: scan && SpamGuardScanSerializer.new(scan, scope: guardian, root: false),
@@ -51,6 +55,47 @@ module DiscourseSpamGuard
         on_failure { render_json_error(I18n.t("spam_guard.check_failed")) }
         on_model_not_found(:user) { raise Discourse::NotFound }
         on_failed_policy(:can_manage_exception) { raise Discourse::InvalidAccess }
+      end
+    end
+
+    def submission
+      raise Discourse::InvalidAccess unless current_user.human?
+      user = User.find(params[:user_id])
+      report = Submission.find_by(user: user)
+      protected = report && Submission::PROTECTED_STATUSES.include?(report.status)
+      candidate = SubmissionCandidate.latest(user) if SubmissionCandidate.configured? && !protected
+      if candidate
+        StaffActionLogger.new(current_user).log_custom(
+          "spam_guard_submission_preview",
+          user_id: user.id,
+        )
+      end
+      render json: {
+               configured: SubmissionCandidate.configured?,
+               submission:
+                 report && SpamGuardSubmissionSerializer.new(report, scope: guardian, root: false),
+               preview:
+                 candidate &&
+                   SpamGuardSubmissionPreviewSerializer.new(
+                     candidate,
+                     scope: guardian,
+                     root: false,
+                   ),
+             }
+    end
+
+    def submit_report
+      SubmitReport.call(**service_params) do
+        on_success do |submission:|
+          render json: {
+                   submission:
+                     SpamGuardSubmissionSerializer.new(submission, scope: guardian, root: false),
+                 },
+                 status: :accepted
+        end
+        on_failed_policy(:can_submit) { raise Discourse::InvalidAccess }
+        on_model_not_found(:user) { raise Discourse::NotFound }
+        on_failure { render_json_error(I18n.t("spam_guard.submission_failed")) }
       end
     end
 
