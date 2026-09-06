@@ -21,14 +21,23 @@ export default class SpamGuardRiskScore extends Component {
     if (!this.hasScore) {
       return "--unknown";
     }
-    return (
-      {
-        allow: "--clear",
-        watch: "--caution",
-        review: "--caution",
-        silence: "--strong",
-      }[this.args.decision] || "--unknown"
-    );
+    if (this.args.score >= 70) {
+      return "--strong";
+    }
+    if (this.args.score > 30) {
+      return "--moderate";
+    }
+    return this.args.score > 0 ? "--caution" : "--clear";
+  }
+
+  get riskLabel() {
+    const labels = {
+      "--clear": "no_scored_concern",
+      "--caution": "suspicious",
+      "--moderate": "moderate_concern",
+      "--strong": "high_concern",
+    };
+    return i18n(`spam_guard.dashboard.${labels[this.riskModifier]}`);
   }
 
   <template>
@@ -66,14 +75,12 @@ export default class SpamGuardRiskScore extends Component {
               "spam_guard.dashboard.exempt_note"
             }}</span>
         {{/unless}}
+      {{else if this.hasScore}}
+        <span class="spam-guard-status">{{this.riskLabel}}</span>
       {{else if @compact}}
-        {{#if this.hasScore}}
-          <SpamGuardStatus @decision={{@decision}} @status={{@status}} />
-        {{else}}
-          <span class="spam-guard-risk-score__label">{{i18n
-              "spam_guard.dashboard.not_scored"
-            }}</span>
-        {{/if}}
+        <span class="spam-guard-risk-score__label">{{i18n
+            "spam_guard.dashboard.not_scored"
+          }}</span>
       {{else}}
         <SpamGuardStatus @decision={{@decision}} @status={{@status}} />
       {{/if}}

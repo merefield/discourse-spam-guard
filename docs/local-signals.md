@@ -1,4 +1,4 @@
-# Local signals (policy version 5)
+# Local signals (policy version 6)
 
 The free plugin includes exact duplicate posts, posting bursts and confirmed spam
 moderation history. These are deterministic rules; no keywords, semantic analysis,
@@ -10,7 +10,7 @@ the default for the plugin and is recommended while evaluating the rules.
 | --- | --- | --- |
 | Exact duplicates | Identical raw text of at least 40 characters in at least three distinct public topics within 24 hours | +20 |
 | Posting burst | At least five posts across at least three public topics within ten minutes | +15 |
-| Confirmed spam | Distinct posts with spam flags agreed with by human staff in the last 30 days | +80 per post by default, configurable |
+| Confirmed spam | Distinct posts with spam flags agreed with by human staff in the last 30 days | +85 per post by default, configurable |
 
 Duplicate and burst contributions share a 25-point cap. Add confirmed spam points
 without first capping them, then apply the reading adjustment. The combined local
@@ -21,10 +21,10 @@ reading reduces the combined score to zero. Observe mode only records evidence.
 
 Confirmed spam requires review even when admins configure its points or the local
 cap to zero. With no external match, one confirmed post and sustained reading gives
-`80 - 15 = 65`; two give `160 - 15 = 145`, capped to 100. There is no special
+`85 - 15 = 70`; two give `170 - 15 = 155`, capped to 100. There is no special
 repeat-offence weight or decision floor in that arithmetic.
 Local points never authorize a silence, including when they raise the displayed
-score above 75 after reading reduced an external silence recommendation to review.
+score into the red band after reading reduced an external silence recommendation to review.
 Unavailable or skipped provider checks remain unscored. Local evidence can still
 request review at its normal threshold, but cannot authorize automatic silencing.
 

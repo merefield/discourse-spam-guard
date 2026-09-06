@@ -15,6 +15,16 @@ RSpec.describe "Configure Spam Guard risk weights" do
       no_reading_adjustment
       confirmed_spam_points
       local_points_cap
+      external_weak_points
+      email_moderate_points
+      email_strong_points
+      ip_moderate_points
+      ip_strong_points
+      external_combined_points
+      email_moderate_frequency
+      email_moderate_confidence
+      ip_moderate_frequency
+      ip_moderate_confidence
     ].each { |suffix| expect(settings_page).to have_setting("spam_guard_#{suffix}") }
     expect(settings_page.find_setting("spam_guard_confirmed_spam_points")).to have_text(
       "Risk points per distinct post",
@@ -27,6 +37,15 @@ RSpec.describe "Configure Spam Guard risk weights" do
     expect(settings_page).to have_overridden_setting(
       "spam_guard_confirmed_spam_points",
       value: "75",
+    )
+    expect(settings_page.find_setting("spam_guard_email_moderate_points")).to have_text(
+      "cannot authorize automatic silencing",
+    )
+    settings_page.fill_setting("spam_guard_email_moderate_points", "55")
+    settings_page.save_setting("spam_guard_email_moderate_points")
+    expect(settings_page).to have_overridden_setting(
+      "spam_guard_email_moderate_points",
+      value: "55",
     )
     page.refresh
     expect(settings_page).to have_overridden_setting(

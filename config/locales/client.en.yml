@@ -6,6 +6,10 @@ en:
       open_user_dashboard: "Open Spam Guard dashboard for %{username}"
       dashboard:
         risk_score: "Risk score"
+        high_concern: "High concern"
+        moderate_concern: "Moderate concern"
+        suspicious: "Suspicious"
+        no_scored_concern: "No scored concern"
         exempt: "Exempt"
         exempt_note: "Manual override · Spam Guard checks are bypassed. Any score shown is the last saved assessment."
         percentage: "%{value}%"

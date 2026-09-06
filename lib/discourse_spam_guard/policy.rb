@@ -13,10 +13,26 @@ module DiscourseSpamGuard
       }
     end
 
+    def self.external_weights
+      {
+        "external_weak_points" => SiteSetting.spam_guard_external_weak_points,
+        "email_moderate_points" => SiteSetting.spam_guard_email_moderate_points,
+        "email_strong_points" => SiteSetting.spam_guard_email_strong_points,
+        "ip_moderate_points" => SiteSetting.spam_guard_ip_moderate_points,
+        "ip_strong_points" => SiteSetting.spam_guard_ip_strong_points,
+        "external_combined_points" => SiteSetting.spam_guard_external_combined_points,
+        "email_moderate_confidence" => SiteSetting.spam_guard_email_moderate_confidence,
+        "email_moderate_frequency" => SiteSetting.spam_guard_email_moderate_frequency,
+        "ip_moderate_confidence" => SiteSetting.spam_guard_ip_moderate_confidence,
+        "ip_moderate_frequency" => SiteSetting.spam_guard_ip_moderate_frequency,
+      }
+    end
+
     def self.settings
       {
-        "version" => 5,
+        "version" => 6,
         "weights" => weights,
+        "external_weights" => external_weights,
         "preset" => SiteSetting.spam_guard_preset,
         "mode" => SiteSetting.spam_guard_mode,
         "email_confidence" => SiteSetting.spam_guard_email_confidence,
@@ -36,7 +52,8 @@ module DiscourseSpamGuard
       additional_evidence: []
     )
       external = status == "checked" ? evaluate(evidence, settings) : "unknown"
-      base = { "allow" => 0, "watch" => 20, "review" => 50, "silence" => 80 }[external]
+      external_scoring = score_external(evidence, settings) if status == "checked"
+      base = external_scoring&.fetch("score")
       score = (base + engagement.fetch("adjustment")).clamp(0, 100) if base
       decision = external
       local_points = local_signals&.fetch("adjustment", 0) || 0
@@ -49,7 +66,8 @@ module DiscourseSpamGuard
       local_points += additional_points
       if score
         decision = "watch" if external == "allow" && score >= 10
-        decision = "review" if external == "silence" && score < 75
+        # Configurable display weights must not relax automatic-silencing safeguards.
+        decision = "review" if external == "silence" && engagement.fetch("adjustment") < -5
         score =
           (base + [engagement.fetch("adjustment") + local_points, local_cap].min).clamp(0, 100)
         if %w[allow watch].include?(decision)
@@ -64,6 +82,7 @@ module DiscourseSpamGuard
       end
       {
         "external_decision" => external,
+        "external_scoring" => external_scoring,
         "scored" => !base.nil?,
         "base_score" => base,
         "score" => score,
@@ -75,19 +94,44 @@ module DiscourseSpamGuard
       }
     end
 
+    def self.qualifies?(data, field, settings, moderate: false)
+      return false unless data && data["appears"] && !data["blacklisted"]
+      return false unless data["last_seen"] && !data["confidence"].nil?
+
+      seen = Time.zone.parse(data["last_seen"])
+      return false unless seen && seen <= Time.current && seen >= settings["max_age_days"].days.ago
+
+      thresholds = moderate ? settings.fetch("external_weights") { external_weights } : settings
+      prefix = moderate ? "#{field}_moderate" : field
+      data["frequency"] >= thresholds.fetch("#{prefix}_frequency") &&
+        data["confidence"].to_f >= thresholds.fetch("#{prefix}_confidence")
+    end
+
+    def self.score_external(evidence, settings)
+      weights = settings.fetch("external_weights") { external_weights }
+      fields = evidence.transform_values { |data| data["appears"] || data["blacklisted"] }
+      scores = fields.transform_values { |matched| matched ? weights["external_weak_points"] : 0 }
+      tiers = fields.transform_values { |matched| matched ? "weak" : "none" }
+      %w[email ip].each do |field|
+        strong = qualifies?(evidence[field], field, settings)
+        moderate = qualifies?(evidence[field], field, settings, moderate: true)
+        next unless strong || moderate
+
+        tiers[field] = strong ? "strong" : "moderate"
+        candidates = [scores[field], weights.fetch("#{field}_moderate_points")]
+        candidates << weights.fetch("#{field}_strong_points") if strong
+        scores[field] = candidates.max
+      end
+      combined = tiers["email"] == "strong" && tiers["ip"] == "strong"
+      score = (scores.values + [combined ? weights["external_combined_points"] : 0]).max
+      { "score" => score, "tiers" => tiers, "points" => scores, "combined" => combined }
+    end
+
     def self.evaluate(evidence, settings = self.settings)
-      strong =
-        %w[email ip].select do |field|
-          data = evidence[field]
-          seen = Time.zone.parse(data["last_seen"]) if data && data["last_seen"]
-          data && data["appears"] && !data["blacklisted"] && seen && seen <= Time.current &&
-            seen >= settings["max_age_days"].days.ago &&
-            data["frequency"] >= settings["#{field}_frequency"] &&
-            data["confidence"].to_f >= settings["#{field}_confidence"]
-        end
+      strong = %w[email ip].select { |field| qualifies?(evidence[field], field, settings) }
       if strong.include?("email") && (settings["preset"] == "balanced" || strong.include?("ip"))
         "silence"
-      elsif strong.any?
+      elsif strong.any? || qualifies?(evidence["email"], "email", settings, moderate: true)
         "review"
       elsif evidence.values.any? { |data| data["appears"] || data["blacklisted"] }
         "watch"

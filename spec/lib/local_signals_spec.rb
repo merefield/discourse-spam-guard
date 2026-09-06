@@ -127,14 +127,14 @@ RSpec.describe DiscourseSpamGuard::LocalSignals do
             status: :agreed,
           )
         end
-        expected_points = (index + 1) * 80
+        expected_points = (index + 1) * 85
         expect(described_class.snapshot(user)["history_points"]).to eq(expected_points)
       end
 
       expect(described_class.snapshot(user)).to include(
         "confirmed_spam_posts" => 3,
-        "history_points" => 240,
-        "adjustment" => 240,
+        "history_points" => 255,
+        "adjustment" => 255,
       )
     end
 

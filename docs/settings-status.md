@@ -1,6 +1,6 @@
 # Settings implementation status
 
-All 21 settings in the free plugin's `config/settings.yml` have runtime consumers.
+All 31 settings in the free plugin's `config/settings.yml` have runtime consumers.
 
 | Setting (all prefixed `spam_guard_`) | Implemented behavior |
 | --- | --- |
@@ -13,7 +13,7 @@ All 21 settings in the free plugin's `config/settings.yml` have runtime consumer
 | `reading_meaningful_adjustment` | Meaningful reading adjustment, default -10 |
 | `reading_sustained_adjustment` | Sustained reading adjustment, default -15 |
 | `no_reading_adjustment` | Eligible no-reading adjustment, default +10 |
-| `confirmed_spam_points` | Points per distinct confirmed spam post, default 80 |
+| `confirmed_spam_points` | Points per distinct confirmed spam post, default 85 |
 | `local_points_cap` | Combined local contribution cap after reading, default 100 |
 | `region` | Selects the provider endpoint |
 | `recheck_hours` | Schedules the registration follow-up delay; zero prevents new follow-up scheduling |
@@ -39,3 +39,13 @@ Policy version 5 verification: 125 backend/system examples and 22 browser tests
 pass. Coverage includes saving a weight through the admin settings UI, preserving
 historical snapshots, per-post multiplication before the cap, and a real
 `PostCreator` check of duplicate prevention and later repetition after expiry.
+
+## External scoring (policy version 6)
+
+Six additional point settings and four moderate-tier threshold settings are
+implemented and saved with every new assessment. See
+[external evidence scoring](external-scoring.md) for their defaults, composition
+and action boundaries. These settings are server-only. Existing scans remain
+unchanged until another check is run.
+
+Policy version 6 validation: 131 backend/system examples and 23 browser tests pass locally, including the admin settings save flow and score-band boundaries.

@@ -17,6 +17,9 @@ pagination and moderation actions.
 
 See the [core integration audit](docs/core-integration-audit.md).
 
+See [external evidence scoring](docs/external-scoring.md) for configurable tier
+weights, thresholds and the distinction between scores and automatic actions.
+
 ## Current implementation
 
 - Background checks for new registrations and an optional delayed recheck.

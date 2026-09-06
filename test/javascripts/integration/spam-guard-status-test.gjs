@@ -109,8 +109,8 @@ module("Integration | Component | SpamGuardStatus", function (hooks) {
     assert
       .dom(".spam-guard-risk-score .spam-guard-status")
       .hasText(
-        i18n("spam_guard.decisions.review"),
-        "the adjusted assessment requests review"
+        i18n("spam_guard.dashboard.moderate_concern"),
+        "the adjusted score is in the middle band"
       );
     assert
       .dom(".spam-guard-evidence__provider .spam-guard-status")
@@ -128,7 +128,7 @@ module("Integration | Component | SpamGuardStatus", function (hooks) {
       .hasText("65%", "the rule score is the dashboard focal point");
     assert
       .dom(".spam-guard-risk-score")
-      .hasClass("--caution", "the box reflects the review assessment");
+      .hasClass("--moderate", "the box reflects the middle score band");
     assert
       .dom(".spam-guard-evidence__risk")
       .includesText("-15", "the engagement adjustment is visible");
