@@ -25,9 +25,9 @@ changes an automatic-silence recommendation to human review.
 
 The account dashboard and admin user list share `SpamGuardRiskScore`: a large
 percentage summary and a compact list version. Percentages express the existing
-0–100 rules index, not a statistically calibrated probability. The same decision
-sets the colour in both contexts unless an account is currently exempt. Evidence floors can retain an amber assessment
-at zero adjusted points; a low score must not visually erase unresolved evidence.
+0–100 rules index, not a statistically calibrated probability. The numeric bands
+below set the colour in both contexts unless an account is currently exempt.
+Evidence and action recommendations remain separate from the numeric band.
 Unknown, skipped and legacy unscored checks show “Not scored”, never an invented
 zero. The user list receives the stored score, without recalculating or looking up
 the account on the provider.
@@ -72,3 +72,14 @@ evidence or workflow states, but accessibility and explanations remain free.
 Do not hide essential meaning in tooltips or require users to distinguish hues.
 
 Reference: [WCAG 2.2 use of colour](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html).
+
+## Numeric score colours (0.1.3)
+
+The shared dashboard and user-list score box uses numeric bands independently of
+the action recommendation: 0 green (No scored concern), 1–30 yellow (Suspicious),
+31–69 amber (Moderate concern), and 70–100 red (High concern). A saved score of zero
+is green even when the evidence still warrants review. A zero score is not proof
+that the account is safe. Exempt accounts override all numeric bands with blue and
+an explicit Exempt label; unavailable scores remain grey N/A. Colour bands never
+authorize moderation actions. Theme palette colours and text labels support both
+light and dark themes; amber mixes the theme's yellow and red colours.

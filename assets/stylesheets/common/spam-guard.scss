@@ -250,6 +250,15 @@
     border-inline-start-color: var(--highlight);
   }
 
+  &.--moderate {
+    background: color-mix(in srgb, var(--highlight-low) 70%, var(--danger-low));
+    border-inline-start-color: color-mix(
+      in srgb,
+      var(--highlight) 65%,
+      var(--danger)
+    );
+  }
+
   &.--strong {
     background: var(--danger-low);
     border-inline-start-color: var(--danger);

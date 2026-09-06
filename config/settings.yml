@@ -39,7 +39,7 @@ plugins:
     min: 0
     max: 100
   spam_guard_confirmed_spam_points:
-    default: 80
+    default: 85
     min: 0
     max: 100
   spam_guard_local_points_cap:
@@ -80,3 +80,43 @@ plugins:
     default: 30
     min: 1
     max: 90
+  spam_guard_external_weak_points:
+    default: 20
+    min: 0
+    max: 100
+  spam_guard_email_moderate_points:
+    default: 50
+    min: 0
+    max: 100
+  spam_guard_email_strong_points:
+    default: 85
+    min: 0
+    max: 100
+  spam_guard_ip_moderate_points:
+    default: 30
+    min: 0
+    max: 100
+  spam_guard_ip_strong_points:
+    default: 50
+    min: 0
+    max: 100
+  spam_guard_external_combined_points:
+    default: 90
+    min: 0
+    max: 100
+  spam_guard_email_moderate_confidence:
+    default: 50
+    min: 0
+    max: 100
+  spam_guard_email_moderate_frequency:
+    default: 3
+    min: 1
+    max: 10000
+  spam_guard_ip_moderate_confidence:
+    default: 50
+    min: 0
+    max: 100
+  spam_guard_ip_moderate_frequency:
+    default: 5
+    min: 1
+    max: 10000

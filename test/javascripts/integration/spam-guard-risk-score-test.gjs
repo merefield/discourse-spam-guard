@@ -58,7 +58,7 @@ module("Integration | Component | SpamGuardRiskScore", function (hooks) {
       .hasClass("--unknown", "the outage colour is neutral");
   });
 
-  test("reading does not turn unresolved evidence green at zero points", async function (assert) {
+  test("zero uses green independently of the action recommendation", async function (assert) {
     await render(
       <template>
         <SpamGuardRiskScore
@@ -74,12 +74,54 @@ module("Integration | Component | SpamGuardRiskScore", function (hooks) {
       .hasText("0%", "the actual adjusted score is preserved");
     assert
       .dom(".spam-guard-risk-score")
-      .hasClass("--caution", "the evidence floor is reflected in the colour");
+      .hasClass("--clear", "zero has the green score band");
     assert
       .dom(".spam-guard-status")
       .hasText(
-        i18n("spam_guard.decisions.watch"),
-        "the retained concern is explained in text"
+        i18n("spam_guard.dashboard.no_scored_concern"),
+        "the label describes the score rather than an action"
       );
+  });
+  test("both summary sizes use red from 70 while exemptions and missing scores take precedence", async function (assert) {
+    for (const compact of [false, true]) {
+      for (const [score, exempt, status, modifier] of [
+        [0, false, "checked", "--clear"],
+        [1, false, "checked", "--caution"],
+        [30, false, "checked", "--caution"],
+        [31, false, "checked", "--moderate"],
+        [69, false, "checked", "--moderate"],
+        [70, false, "checked", "--strong"],
+        [100, false, "checked", "--strong"],
+        [100, true, "checked", "--exempt"],
+        [100, false, "unknown", "--unknown"],
+      ]) {
+        await render(
+          <template>
+            <SpamGuardRiskScore
+              @score={{score}}
+              @scored={{true}}
+              @status={{status}}
+              @decision="review"
+              @compact={{compact}}
+              @exempt={{exempt}}
+            />
+          </template>
+        );
+        assert
+          .dom(".spam-guard-risk-score")
+          .hasClass(
+            modifier,
+            `${score}, ${status}, exempt ${exempt}, compact ${compact}`
+          );
+        if (modifier === "--strong") {
+          assert
+            .dom(".spam-guard-risk-score")
+            .includesText(
+              i18n("spam_guard.dashboard.high_concern"),
+              "high concern is explicit without relying on red"
+            );
+        }
+      }
+    }
   });
 });

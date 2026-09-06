@@ -1,5 +1,18 @@
 # frozen_string_literal: true
 
+module DiscourseSpamGuard::PolicySpecHelpers
+  def assess(evidence, adjustment: 0, settings: described_class.settings)
+    described_class.assess(
+      evidence,
+      settings,
+      engagement: {
+        "adjustment" => adjustment,
+      },
+      status: "checked",
+    )
+  end
+end
+
 RSpec.describe DiscourseSpamGuard::Policy do
   describe ".assess" do
     it "retains review for confirmed spam even when its configured contribution is zero" do
@@ -106,7 +119,7 @@ RSpec.describe DiscourseSpamGuard::Policy do
       expect(assessment).to include(
         "external_decision" => "silence",
         "decision" => "review",
-        "score" => 50,
+        "score" => 60,
       )
     end
 
@@ -120,7 +133,7 @@ RSpec.describe DiscourseSpamGuard::Policy do
           },
           status: "checked",
         )
-      expect(assessment).to include("decision" => "silence", "score" => 75)
+      expect(assessment).to include("decision" => "silence", "score" => 85)
     end
 
     it "never interprets engagement as a result when the provider is unavailable or skipped" do
@@ -151,6 +164,117 @@ RSpec.describe DiscourseSpamGuard::Policy do
           status: "checked",
         )
       expect(assessment).to include("decision" => "watch", "score" => 0)
+    end
+  end
+
+  describe "external scoring tiers" do
+    let(:email) do
+      {
+        "appears" => true,
+        "frequency" => 9,
+        "confidence" => 66.67,
+        "last_seen" => 21.hours.ago.iso8601,
+      }
+    end
+    let(:ip) do
+      {
+        "appears" => true,
+        "frequency" => 2,
+        "confidence" => 1.01,
+        "last_seen" => 20.days.ago.iso8601,
+      }
+    end
+
+    include DiscourseSpamGuard::PolicySpecHelpers
+
+    it "scores recent moderate email evidence at 60 with no reading and requests review" do
+      result = assess({ "email" => email, "ip" => ip }, adjustment: 10)
+      expect(result).to include("base_score" => 50, "score" => 60, "decision" => "review")
+      expect(result["external_scoring"]).to include(
+        "tiers" => {
+          "email" => "moderate",
+          "ip" => "weak",
+        },
+        "points" => {
+          "email" => 50,
+          "ip" => 20,
+        },
+        "combined" => false,
+      )
+    end
+
+    it "uses distinct default weights without summing correlated identifiers" do
+      strong = email.merge("frequency" => 20, "confidence" => 99)
+      moderate_ip = ip.merge("frequency" => 5, "confidence" => 50)
+      [
+        [{ "email" => strong }, 85, "review"],
+        [{ "ip" => moderate_ip }, 30, "watch"],
+        [{ "ip" => strong }, 50, "review"],
+        [{ "email" => email, "ip" => moderate_ip }, 50, "review"],
+        [{ "email" => strong, "ip" => strong }, 90, "silence"],
+      ].each do |evidence, points, decision|
+        expect(assess(evidence)).to include("score" => points, "decision" => decision)
+      end
+    end
+
+    it "requires both moderate thresholds and a recent, dated, valid match" do
+      freeze_time Time.current.change(usec: 0)
+      boundary =
+        email.merge("frequency" => 3, "confidence" => 50, "last_seen" => 30.days.ago.iso8601)
+      expect(assess({ "email" => boundary })).to include("score" => 50, "decision" => "review")
+      [
+        { "frequency" => 2 },
+        { "confidence" => 49.99 },
+        { "confidence" => nil },
+        { "last_seen" => 30.days.ago.advance(seconds: -1).iso8601 },
+        { "last_seen" => 1.second.from_now.iso8601 },
+        { "last_seen" => nil },
+        { "blacklisted" => true },
+      ].each do |weakness|
+        expect(assess({ "email" => boundary.merge(weakness) })).to include(
+          "score" => 20,
+          "decision" => "watch",
+        )
+      end
+      expect(assess({ "email" => boundary.merge("appears" => false) })).to include(
+        "score" => 0,
+        "decision" => "allow",
+      )
+    end
+
+    it "uses saved configurable thresholds and weights without changing earlier assessments" do
+      saved = described_class.settings
+      before = assess({ "email" => email }, settings: saved)
+      SiteSetting.spam_guard_email_moderate_points = 65
+      expect(assess({ "email" => email })).to include("score" => 65, "decision" => "review")
+      SiteSetting.spam_guard_email_moderate_frequency = 10
+      expect(assess({ "email" => email })).to include("score" => 20, "decision" => "watch")
+      expect(assess({ "email" => email }, settings: saved)).to eq(before)
+    end
+
+    it "does not let numeric weights grant silencing or suppress evidence-based review" do
+      SiteSetting.spam_guard_email_moderate_points = 100
+      SiteSetting.spam_guard_external_weak_points = 100
+      expect(assess({ "email" => email }, adjustment: 10)).to include(
+        "score" => 100,
+        "decision" => "review",
+      )
+      expect(assess({ "username" => email })).to include("score" => 100, "decision" => "watch")
+      SiteSetting.spam_guard_external_weak_points = 0
+      SiteSetting.spam_guard_email_moderate_points = 0
+      expect(assess({ "email" => email })).to include("score" => 0, "decision" => "review")
+    end
+
+    it "keeps preset scoring consistent and preserves the reading safeguard independently of weights" do
+      strong = email.merge("frequency" => 20, "confidence" => 99)
+      expect(assess({ "email" => strong })).to include("score" => 85, "decision" => "review")
+      SiteSetting.spam_guard_preset = "balanced"
+      expect(assess({ "email" => strong })).to include("score" => 85, "decision" => "silence")
+      SiteSetting.spam_guard_email_strong_points = 100
+      expect(assess({ "email" => strong }, adjustment: -10)).to include(
+        "score" => 90,
+        "decision" => "review",
+      )
     end
   end
 
@@ -276,7 +400,7 @@ RSpec.describe DiscourseSpamGuard::Policy do
         { "last_seen" => 1.day.from_now.iso8601 },
         { "last_seen" => nil },
         { "frequency" => 1 },
-        { "confidence" => 50 },
+        { "confidence" => 49 },
         { "confidence" => nil },
         { "blacklisted" => true },
       ].each do |weakness|

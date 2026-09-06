@@ -26,13 +26,14 @@ each day. Time recorded by Discourse is a proxy for attention, not proof. Counte
 can be gamed. Initial thresholds are heuristics requiring validation against actual
 moderator outcomes; they are neither calibrated probabilities nor percentages.
 
-External evidence supplies 0 (no significant match), 20 (weak), 50 (review), or
-80 (silence) base points. Add the engagement adjustment to local evidence, apply
+External evidence supplies the highest applicable configurable tier score; see
+[external scoring](external-scoring.md) for the policy version 6 defaults. Add the engagement adjustment to local evidence, apply
 the configured upper local cap (default 100), then add external base points and
 clamp the final score to 0–100. Negative reading adjustments can reduce external
 concern when local evidence is absent. No intermediate zero-floor removes them.
 Zero reading alone changes a clear assessment to “Some concern”; it never creates
-a review or sanction. A silence recommendation below 75 points becomes review.
+a review or sanction. Reading reassurance below -5 converts a silence recommendation to review,
+independently of configurable external score weights.
 Strong external evidence always requires at least review, and weak external
 evidence remains visible even if the score reaches zero. These evidence floors
 mean points alone do not determine the outcome.
@@ -41,7 +42,7 @@ Missing or failed provider checks remain unknown and unscored regardless of
 engagement. Staff, age, trust-level and exception exclusions remain in force.
 Existing independent moderation is not undone when a later score improves.
 
-Policy version 5 also adds the [local signals](local-signals.md) contribution
+The assessment also includes the [local signals](local-signals.md) contribution
 to the displayed score. Those points can request review but cannot restore a
 silence recommendation reduced by reading. Engagement is evaluated on registration,
 delayed, manual and activity checks. There is no periodic sweep. Old scans

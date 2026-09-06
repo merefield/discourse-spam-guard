@@ -156,7 +156,7 @@ acceptance("Spam Guard admin user list", function (needs) {
     assert
       .dom(".spam-guard-column .spam-guard-status")
       .hasText(
-        i18n("spam_guard.decisions.watch"),
+        i18n("spam_guard.dashboard.suspicious"),
         "the supplied summary survives the admin user model"
       );
     assert

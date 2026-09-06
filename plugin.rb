@@ -2,7 +2,7 @@
 
 # name: discourse-spam-guard
 # about: Explainable Stop Forum Spam reputation checks and moderation tools.
-# version: 0.1.2
+# version: 0.1.3
 # authors: Robert Barrow
 # url: https://github.com/merefield/discourse-spam-guard
 
