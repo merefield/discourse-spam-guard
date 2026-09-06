@@ -72,6 +72,80 @@ RSpec.describe DiscourseSpamGuard::SubmissionCandidate do
     end
   end
 
+  describe ".public_ip?" do
+    it "rejects non-public IPv4 and IPv4-mapped addresses" do
+      %w[
+        0.0.0.0
+        0.1.2.3
+        10.0.0.1
+        100.64.0.1
+        100.127.255.255
+        127.0.0.1
+        169.254.1.1
+        172.16.0.1
+        192.0.0.1
+        192.0.2.1
+        192.88.99.1
+        192.168.1.1
+        198.18.0.1
+        198.51.100.1
+        203.0.113.1
+        224.0.0.1
+        239.255.255.255
+        240.0.0.1
+        255.255.255.255
+      ].each do |address|
+        expect(described_class.public_ip?(address)).to eq(false), address
+        expect(described_class.public_ip?("::ffff:#{address}")).to eq(false), address
+      end
+    end
+
+    it "rejects non-public and transitional IPv6 addresses" do
+      %w[
+        ::
+        ::1
+        ::192.0.2.1
+        64:ff9b::c000:201
+        64:ff9b:1::1
+        100::1
+        100:0:0:1::1
+        2001::1
+        2001:2::1
+        2001:db8::1
+        2002:c000:201::1
+        3fff::1
+        5f00::1
+        fc00::1
+        fd00::1
+        fe80::1
+        fec0::1
+        ff02::1
+      ].each { |address| expect(described_class.public_ip?(address)).to eq(false), address }
+      [nil, "", "not-an-ip"].each do |address|
+        expect(described_class.public_ip?(address)).to eq(false)
+      end
+    end
+
+    it "accepts ordinary public addresses and respects core network exclusions" do
+      %w[
+        8.8.4.4
+        1.1.1.1
+        100.63.255.255
+        100.128.0.1
+        ::ffff:8.8.4.4
+        2001:4860:4860::8888
+        2606:4700:4700::1111
+      ].each { |address| expect(described_class.public_ip?(address)).to eq(true), address }
+      SiteSetting.blocked_ip_blocks = "8.8.4.4"
+      expect(described_class.public_ip?("8.8.4.4")).to eq(false)
+    end
+
+    it "does not offer a report for a special-purpose registration address" do
+      user.update!(registration_ip_address: "100.64.0.1")
+      expect(described_class.latest(user)).to be_nil
+    end
+  end
+
   describe ".from_token" do
     it "binds preview approval to the actor, target, content and expiration" do
       freeze_time

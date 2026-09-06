@@ -51,13 +51,27 @@ export default class SpamGuardSubmission extends Component {
       const result = await ajax(
         `/admin/plugins/discourse-spam-guard/accounts/${userId}/submission.json`
       );
-      if (!this.isDestroyed && this.args.userId === userId) {
+      if (
+        !this.isDestroying &&
+        !this.isDestroyed &&
+        this.args.userId === userId
+      ) {
         this.result = result;
       }
     } catch (error) {
-      popupAjaxError(error);
+      if (
+        !this.isDestroying &&
+        !this.isDestroyed &&
+        this.args.userId === userId
+      ) {
+        popupAjaxError(error);
+      }
     } finally {
-      if (!this.isDestroyed && this.args.userId === userId) {
+      if (
+        !this.isDestroying &&
+        !this.isDestroyed &&
+        this.args.userId === userId
+      ) {
         this.busy = false;
       }
     }
@@ -76,7 +90,11 @@ export default class SpamGuardSubmission extends Component {
           data: { token, confirmed: data.confirmed },
         }
       );
-      if (!this.isDestroyed && this.args.userId === userId) {
+      if (
+        !this.isDestroying &&
+        !this.isDestroyed &&
+        this.args.userId === userId
+      ) {
         this.result = {
           submission: response.submission,
           preview: null,
@@ -85,9 +103,19 @@ export default class SpamGuardSubmission extends Component {
         this.a11y.announce(i18n("spam_guard.submission.queued"));
       }
     } catch (error) {
-      popupAjaxError(error);
+      if (
+        !this.isDestroying &&
+        !this.isDestroyed &&
+        this.args.userId === userId
+      ) {
+        popupAjaxError(error);
+      }
     } finally {
-      if (!this.isDestroyed && this.args.userId === userId) {
+      if (
+        !this.isDestroying &&
+        !this.isDestroyed &&
+        this.args.userId === userId
+      ) {
         this.busy = false;
       }
     }

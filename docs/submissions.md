@@ -24,7 +24,13 @@ The account must be active, email-confirmed, non-staged, non-staff and not exemp
 The post must belong to an ordinary topic in a publicly readable category.
 Private messages and restricted categories are excluded. Deleted spam posts can
 still provide evidence when their original topic and category qualify. A public
-registration IP is required; Discourse does not retain a per-post IP address.
+registration IP is required. Core's IP exclusions are applied, with additional
+multicast, documentation and transition-range exclusions; IPv6 must be ordinary
+global unicast (2000::/3). IPv4-mapped addresses are checked as IPv4. These
+conservative checks also respect the core `blocked_ip_blocks` setting. The
+[IPv6 special-purpose registry](https://www.iana.org/assignments/iana-ipv6-special-registry/)
+is the reference for the additional documentation and transition exclusions.
+Discourse does not retain a per-post IP address.
 
 A signed preview binds approval to the administrator, account and exact payload.
 The server reconstructs it rather than accepting identifiers or evidence from

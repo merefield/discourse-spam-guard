@@ -5,6 +5,10 @@ require "ipaddr"
 
 module DiscourseSpamGuard
   class SubmissionCandidate
+    IPV6_GLOBAL_UNICAST = IPAddr.new("2000::/3")
+    # Reporting excludes multicast and transitional/documentation space beyond core's SSRF filter.
+    NON_REPORTABLE_RANGES =
+      %w[192.88.99.0/24 224.0.0.0/4 2002::/16 3fff::/20].map { |range| IPAddr.new(range) }.freeze
     EVIDENCE_LIMIT = 2000
     PREVIEW_LIFETIME = 10.minutes
     HISTORY_WINDOW = 30.days
@@ -58,8 +62,9 @@ module DiscourseSpamGuard
       return false if value.blank?
       ip = IPAddr.new(value.to_s)
       ip = ip.native if ip.ipv4_mapped?
-      !ip.private? && !ip.loopback? && !ip.link_local? && ip.to_i.positive? &&
-        !(IPAddr.new("224.0.0.0/4").include?(ip) || IPAddr.new("ff00::/8").include?(ip))
+      return false if ip.ipv6? && !IPV6_GLOBAL_UNICAST.include?(ip)
+      return false if NON_REPORTABLE_RANGES.any? { |range| range.include?(ip) }
+      FinalDestination::SSRFDetector.ip_allowed?(ip)
     rescue IPAddr::InvalidAddressError
       false
     end
