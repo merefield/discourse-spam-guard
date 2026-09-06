@@ -1,18 +1,5 @@
 # frozen_string_literal: true
 
-module DiscourseSpamGuard::PolicySpecHelpers
-  def assess(evidence, adjustment: 0, settings: described_class.settings)
-    described_class.assess(
-      evidence,
-      settings,
-      engagement: {
-        "adjustment" => adjustment,
-      },
-      status: "checked",
-    )
-  end
-end
-
 RSpec.describe DiscourseSpamGuard::Policy do
   describe ".assess" do
     it "retains review for confirmed spam even when its configured contribution is zero" do
@@ -185,7 +172,16 @@ RSpec.describe DiscourseSpamGuard::Policy do
       }
     end
 
-    include DiscourseSpamGuard::PolicySpecHelpers
+    define_method(:assess) do |evidence, adjustment: 0, settings: described_class.settings|
+      described_class.assess(
+        evidence,
+        settings,
+        engagement: {
+          "adjustment" => adjustment,
+        },
+        status: "checked",
+      )
+    end
 
     it "scores recent moderate email evidence at 60 with no reading and requests review" do
       result = assess({ "email" => email, "ip" => ip }, adjustment: 10)
