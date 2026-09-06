@@ -5,6 +5,9 @@ Enable `spam_guard_submissions_enabled` and set the secret
 `spam_guard_submission_api_key` in admin site settings. This key is for reporting;
 ordinary reputation lookups do not require it. Reporting has its own controls and
 does not depend on the lookup enable switch or identifier lookup settings.
+The plugin UI stays registered when lookups are disabled so admins can report
+spam, inspect retained evidence and manage recovery. Lookup services and event
+handlers still enforce the lookup switch explicitly.
 
 Open an account's admin Spam Guard dashboard and choose the report preview.
 The confirmation dialog shows the destination and exact username, email, registration IP and evidence that

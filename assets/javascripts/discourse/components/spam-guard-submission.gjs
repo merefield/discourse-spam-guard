@@ -20,6 +20,10 @@ export default class SpamGuardSubmission extends Component {
   @tracked result;
   @tracked busy = false;
 
+  get configured() {
+    return this.result ? this.result.configured : this.args.configured;
+  }
+
   get report() {
     return this.result ? this.result.submission : this.args.submission;
   }
@@ -138,7 +142,7 @@ export default class SpamGuardSubmission extends Component {
       >
         <h3>{{i18n "spam_guard.submission.title"}}</h3>
         <p>{{i18n "spam_guard.submission.description"}}</p>
-        {{#unless @configured}}
+        {{#unless this.configured}}
           <p><a href={{this.settingsUrl}}>{{i18n
                 "spam_guard.submission.configure"
               }}</a></p>

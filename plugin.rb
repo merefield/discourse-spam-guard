@@ -6,7 +6,7 @@
 # authors: Robert Barrow
 # url: https://github.com/merefield/discourse-spam-guard
 
-enabled_site_setting :spam_guard_enabled
+# Admin reporting and recovery remain available independently of lookup activation.
 register_asset "stylesheets/common/spam-guard.scss"
 %w[
   circle-check

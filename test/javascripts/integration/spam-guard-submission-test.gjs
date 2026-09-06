@@ -140,6 +140,37 @@ module("Integration | Component | SpamGuardSubmission", function (hooks) {
       .doesNotExist("no blind retry is offered");
   });
 
+  test("refresh uses the latest reporting configuration", async function (assert) {
+    let configured = false;
+    pretender.get(
+      "/admin/plugins/discourse-spam-guard/accounts/42/submission.json",
+      () => response({ configured, submission: null, preview: null })
+    );
+    await render(
+      <template>
+        <ModalContainer /><SpamGuardSubmission
+          @userId={{42}}
+          @configured={{true}}
+        />
+      </template>
+    );
+    assert
+      .dom(".spam-guard-submission a")
+      .doesNotExist("initial configuration is enabled");
+    await click(".spam-guard-submission__preview");
+    assert
+      .dom(".spam-guard-submission a")
+      .hasText(
+        i18n("spam_guard.submission.configure"),
+        "disabling reporting shows current configuration guidance"
+      );
+    configured = true;
+    await click(".spam-guard-submission__preview");
+    assert
+      .dom(".spam-guard-submission a")
+      .doesNotExist("enabling reporting removes stale guidance");
+  });
+
   test("moderators cannot see reporting controls or identifiers", async function (assert) {
     this.currentUser.setProperties({ admin: false, moderator: true });
     await render(
