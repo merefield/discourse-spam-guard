@@ -18,6 +18,8 @@ one place, so staff can see why an account needs attention and decide what to do
   the existing staff review queue, or enable automatic silencing under stricter rules.
 - **Keep moderation in Discourse.** Open an account assessment directly from the admin
   user list, review the evidence and manage exemptions alongside familiar staff tools.
+- **Use existing AI findings.** See AI classifications alongside human review outcomes,
+  coordinate pending reviews and report human-confirmed spam without extra model calls.
 - **Contribute useful data back.** Report independently confirmed spam to Stop Forum
   Spam after reviewing exactly what will be shared. Individual reporting and its
   safeguards are included free.
@@ -63,6 +65,18 @@ Install the plugin using the guide above, then open **Admin → Plugins → Spam
 * Adjust reputation thresholds, point weights, reading adjustments, local signals and scan retention in the plugin settings. [Scoring documentation](https://github.com/merefield/discourse-spam-guard/blob/main/docs/external-scoring.md) explains the calculation.
 
 **No API key is required for reputation lookups.** Reporting spam back to Stop Forum Spam uses a separate API key and enable setting.
+
+### Discourse AI integration
+
+Included free: saved AI classifications, explanations, scan times, post/review links
+and separate human review outcomes on the admin account dashboard. Spam Guard reuses
+pending AI reviews and consolidates duplicate account reviews in a background job.
+`spam_guard_ai_integration` defaults on when Discourse AI is installed; AI is optional.
+
+AI classifications add no risk points and cannot authorize reports. Human-confirmed
+AI flags use the existing confirmed-spam rule and can lead to the existing account
+reporting preview, with explicit admin approval. Refresh reads saved results without
+additional model calls. See [integration details and scope](https://github.com/merefield/discourse-spam-guard/blob/main/docs/ai-integration.md).
 
 ### Contributing confirmed spam
 

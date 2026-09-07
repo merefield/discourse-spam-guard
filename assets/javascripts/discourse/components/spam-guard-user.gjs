@@ -10,6 +10,7 @@ import { popupAjaxError } from "discourse/lib/ajax-error";
 import DButton from "discourse/ui-kit/d-button";
 import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
+import SpamGuardAiEvidence from "./spam-guard-ai-evidence";
 import SpamGuardEvidence from "./spam-guard-evidence";
 import SpamGuardSubmission from "./spam-guard-submission";
 
@@ -18,6 +19,7 @@ export default class SpamGuardUser extends Component {
   @service a11y;
   @service router;
 
+  @tracked reportRequest = 0;
   @tracked state;
   @tracked busy = false;
   @tracked expanded = false;
@@ -42,6 +44,7 @@ export default class SpamGuardUser extends Component {
     if (this.stateUserId !== userId) {
       this.stateUserId = userId;
       this.state = undefined;
+      this.reportRequest = 0;
       this.expanded = false;
       this.openedForUserId = null;
     }
@@ -115,6 +118,11 @@ export default class SpamGuardUser extends Component {
     } finally {
       this.busy = false;
     }
+  }
+
+  @action
+  openReport() {
+    this.reportRequest++;
   }
 
   @action
@@ -200,8 +208,16 @@ export default class SpamGuardUser extends Component {
                 @scan={{this.state.scan}}
                 @exempt={{this.state.allowed}}
               />
+              <SpamGuardAiEvidence
+                @evidence={{this.state.ai_evidence}}
+                @canReport={{this.canManage}}
+                @onRefresh={{this.load}}
+                @loading={{this.loading}}
+                @onReport={{this.openReport}}
+              />
               {{#if this.canManage}}
                 <SpamGuardSubmission
+                  @previewRequest={{this.reportRequest}}
                   @userId={{@user.id}}
                   @configured={{this.state.submission_configured}}
                   @submission={{this.state.submission}}

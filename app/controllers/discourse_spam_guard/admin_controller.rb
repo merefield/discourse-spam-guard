@@ -40,6 +40,7 @@ module DiscourseSpamGuard
       scan = Scan.where(user: user).latest.first
       report = Submission.find_by(user: user)
       render json: {
+               ai_evidence: AiIntegration.snapshot(user, guardian: guardian),
                submission_configured: SubmissionCandidate.configured?,
                submission:
                  report && SpamGuardSubmissionSerializer.new(report, scope: guardian, root: false),

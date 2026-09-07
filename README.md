@@ -15,6 +15,8 @@ one place, so staff can see why an account needs attention and decide what to do
   the existing staff review queue, or enable automatic silencing under stricter rules.
 - **Keep moderation in Discourse.** Open an account assessment directly from the admin
   user list, review the evidence and manage exemptions alongside familiar staff tools.
+- **Use existing AI findings.** See AI classifications alongside human review outcomes,
+  coordinate pending reviews and report human-confirmed spam without extra model calls.
 - **Contribute useful data back.** Report independently confirmed spam to Stop Forum
   Spam after reviewing exactly what will be shared. Individual reporting and its
   safeguards are included free.
@@ -80,6 +82,15 @@ scans keep their historical scores; rerun a check to apply the new policy.
 
 See [external scoring](docs/external-scoring.md), [reading activity](docs/engagement-assessment.md),
 [local signals](docs/local-signals.md) and [status design](docs/status-design.md).
+
+## Discourse AI integration
+
+The free plugin optionally shows saved AI spam findings, human review outcomes and
+post/review links on the account dashboard. It reuses pending AI reviews and consolidates
+duplicate account reviews. `spam_guard_ai_integration` defaults on when AI is installed.
+AI classifications add no risk points; human-confirmed spam uses the existing rule.
+Confirmed findings link to the existing, explicitly approved account reporting preview.
+No additional LLM calls are made. See [AI integration](docs/ai-integration.md).
 
 ## Reporting confirmed spam
 

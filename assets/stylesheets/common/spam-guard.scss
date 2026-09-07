@@ -373,3 +373,28 @@
     color: var(--primary);
   }
 }
+
+.spam-guard-ai-evidence {
+  margin-block-start: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--primary-low);
+  border-radius: var(--d-border-radius);
+  overflow-wrap: anywhere;
+
+  &__entry {
+    margin-block-start: 1rem;
+    padding-block-start: 1rem;
+    border-block-start: 1px solid var(--primary-low);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  &__scope {
+    margin-block-end: 0;
+  }
+}

@@ -58,23 +58,26 @@ module DiscourseSpamGuard
               error_code: result["error_code"],
             )
           if SiteSetting.spam_guard_mode != "observe" && %w[review silence].include?(decision)
-            reviewable =
-              ReviewableSpamGuard.needs_review!(
-                target: user,
-                target_created_by: user,
-                created_by: Discourse.system_user,
-                reviewable_by_moderator: true,
-                payload: {
-                },
-              )
-            reviewable.update!(payload: { "scan_id" => scan.id })
-            unless reviewable.reviewable_scores.pending.exists?
-              reviewable.add_score(
-                Discourse.system_user,
-                ReviewableScore.types[:needs_approval],
-                reason: "spam_guard",
-                force_review: true,
-              )
+            reviewable = AiIntegration.pending_review(user)
+            unless reviewable
+              reviewable =
+                ReviewableSpamGuard.needs_review!(
+                  target: user,
+                  target_created_by: user,
+                  created_by: Discourse.system_user,
+                  reviewable_by_moderator: true,
+                  payload: {
+                  },
+                )
+              reviewable.update!(payload: { "scan_id" => scan.id })
+              unless reviewable.reviewable_scores.pending.exists?
+                reviewable.add_score(
+                  Discourse.system_user,
+                  ReviewableScore.types[:needs_approval],
+                  reason: "spam_guard",
+                  force_review: true,
+                )
+              end
             end
             scan.update!(reviewable: reviewable, action_taken: "review")
             if SiteSetting.spam_guard_mode == "protect" && decision == "silence" &&

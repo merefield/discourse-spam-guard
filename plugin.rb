@@ -2,7 +2,7 @@
 
 # name: discourse-spam-guard
 # about: Explainable Stop Forum Spam reputation checks and moderation tools.
-# version: 0.1.5
+# version: 0.1.6
 # authors: Robert Barrow
 # url: https://github.com/merefield/discourse-spam-guard
 
@@ -33,6 +33,7 @@ after_initialize do
   register_reviewable_type ReviewableSpamGuard
 
   reloadable_patch do
+    ReviewableFlaggedPost.prepend(DiscourseSpamGuard::CoreExtensions::FlaggedPost)
     Admin::UsersController.prepend(DiscourseSpamGuard::CoreExtensions::AdminUsersController)
     Reviewable.singleton_class.prepend(DiscourseSpamGuard::CoreExtensions::ReviewableQuery)
   end
@@ -45,6 +46,24 @@ after_initialize do
       scope.is_admin? && object.instance_variable_defined?(:@spam_guard_summary)
     end,
   ) { object.instance_variable_get(:@spam_guard_summary) }
+
+  on(:reviewable_score_updated) do |review|
+    DiscourseSpamGuard::AiIntegration.enqueue_reconciliation(review)
+  end
+
+  add_to_serializer(
+    :reviewable_flagged_post,
+    :spam_guard_scan,
+    respect_plugin_enabled: false,
+    include_condition: -> { scope.is_staff? && object.spam_guard_scan.present? },
+  ) { SpamGuardScanSerializer.new(object.spam_guard_scan, scope: scope, root: false).as_json }
+
+  add_to_serializer(
+    :reviewable_flagged_post,
+    :spam_guard_ai_account_id,
+    respect_plugin_enabled: false,
+    include_condition: -> { scope.is_admin? && object.spam_guard_ai_review? },
+  ) { object.target_created_by_id }
 
   on(:user_created) do |user|
     if DiscourseSpamGuard.enabled? && user.human? && !user.staff?

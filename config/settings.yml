@@ -125,3 +125,5 @@ plugins:
   spam_guard_submission_api_key:
     default: ""
     secret: true
+  spam_guard_ai_integration:
+    default: true
