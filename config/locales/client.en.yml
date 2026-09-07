@@ -1,6 +1,26 @@
 en:
   js:
     spam_guard:
+      ai:
+        title: "Discourse AI findings"
+        description: "Existing automated classifications, shown alongside staff decisions. AI findings add no risk points and never authorize reporting on their own."
+        refresh: "Refresh AI findings"
+        spam: "AI classification: suspected spam"
+        not_spam: "AI classification: not spam"
+        checked: "AI checked:"
+        error: "The AI log records a processing or action error; classification does not confirm that any action was taken."
+        post: "View post"
+        review: "View staff review"
+        account: "View Spam Guard account assessment and reporting"
+        report: "Preview account report to Stop Forum Spam"
+        empty: "No recent AI findings for eligible posts."
+        scope: "Shows up to 10 latest post assessments from the last 30 days, sampling up to 100 recent posts in public topics. Older scans and private content are excluded. A not-spam classification applies to that post, not the entire account."
+        outcome:
+          pending: "Awaiting staff review"
+          confirmed: "Staff confirmed spam"
+          rejected: "Staff rejected the spam flag"
+          ignored: "Staff ignored the spam flag"
+          unreviewed: "No human spam decision recorded"
       submission:
         title: "Report confirmed spam"
         description: "Contribute independently confirmed spam to Stop Forum Spam. A risk score or suspicious registration alone is not sufficient."

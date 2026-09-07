@@ -49,6 +49,13 @@ export default class SpamGuardSubmission extends Component {
   }
 
   @action
+  previewRequested() {
+    if (this.args.previewRequest > 0 && !this.busy) {
+      this.preview();
+    }
+  }
+
+  @action
   async preview() {
     const userId = this.args.userId;
     this.busy = true;
@@ -138,6 +145,7 @@ export default class SpamGuardSubmission extends Component {
       <section
         class="spam-guard-submission"
         {{didUpdate this.reset @userId}}
+        {{didUpdate this.previewRequested @previewRequest}}
         ...attributes
       >
         <h3>{{i18n "spam_guard.submission.title"}}</h3>

@@ -9,6 +9,7 @@ RSpec.describe "Configure Spam Guard risk weights" do
   it "lets an admin find and save the per-post weight and reading adjustments" do
     settings_page.visit_filtered_plugin_setting("spam_guard")
     %w[
+      ai_integration
       reading_limited_adjustment
       reading_meaningful_adjustment
       reading_sustained_adjustment

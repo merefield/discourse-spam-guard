@@ -3,6 +3,27 @@
 module DiscourseSpamGuard
   class ReviewEvidence
     def self.preload(reviewables)
+      flagged =
+        reviewables
+          .grep(ReviewableFlaggedPost)
+          .reject do |review|
+            review.instance_variable_defined?(:@spam_guard_scan) &&
+              review.instance_variable_defined?(:@spam_guard_ai_review)
+          end
+      if flagged.present?
+        scans =
+          Scan
+            .where(reviewable_id: flagged.map(&:id))
+            .select("DISTINCT ON (reviewable_id) spam_guard_scans.*")
+            .reorder(:reviewable_id, created_at: :desc, id: :desc)
+            .includes(:user)
+            .index_by(&:reviewable_id)
+        ai_ids = AiIntegration.ai_review_ids(flagged)
+        flagged.each do |review|
+          review.spam_guard_scan = scans[review.id]
+          review.spam_guard_ai_review = ai_ids.include?(review.id)
+        end
+      end
       reviews =
         reviewables
           .grep(ReviewableSpamGuard)
