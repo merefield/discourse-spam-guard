@@ -12,12 +12,14 @@ coordination. Spam Guard works without Discourse AI installed.
 Open an admin user page and expand **Spam Guard**. The AI panel shows classification,
 explanation, scan time, links to the post and review, and the human review outcome.
 Pending, confirmed, rejected, ignored and no human decision are separate states.
-The latest AI classification does not replace a human decision. **Refresh AI findings**
+The latest AI classification does not replace a human decision. Linked reviews must match
+the post and contain a spam score; scans without a review link fall back to the newest
+matching spam review, never an unrelated flag. **Refresh AI findings**
 loads saved results; it does not ask the model to scan again.
 
 The panel displays up to 10 latest results, one per post, drawn from the latest 100
 regular public-topic posts created in the last 30 days, with scans from the same period.
-Private messages and restricted categories are excluded. Deleted posts can appear
+Uncategorized posts are included; private messages and restricted categories are excluded. Deleted posts can appear
 when their public topic remains available. Explanations are truncated to 2,000 characters.
 This is a bounded account summary, not a complete AI audit log. No findings is not a
 clean bill of health. Retained logs remain readable if AI scanning is subsequently disabled.
@@ -49,6 +51,7 @@ A human-confirmed finding offers **Preview account report to Stop Forum Spam**. 
 opens the existing account-level preview using its latest eligible confirmed public
 post, which may differ from the finding clicked. All existing eligibility checks,
 API-key configuration, exact-data preview and explicit admin agreement still apply.
+Staff accounts retain their evidence panel but have no reporting action.
 Nothing is submitted automatically. See [submission safeguards](submissions.md).
 
 ## Privacy and implementation

@@ -210,6 +210,7 @@ export default class SpamGuardUser extends Component {
               />
               <SpamGuardAiEvidence
                 @evidence={{this.state.ai_evidence}}
+                @canReport={{this.canManage}}
                 @onRefresh={{this.load}}
                 @loading={{this.loading}}
                 @onReport={{this.openReport}}

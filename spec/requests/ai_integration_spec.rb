@@ -8,6 +8,13 @@ if defined?(::AiSpamLog)
     fab!(:llm_model)
     fab!(:post) { Fabricate(:post, user: user) }
     fab!(:review) { Fabricate(:reviewable_flagged_post, target: post, target_created_by: user) }
+    fab!(:spam_score) do
+      Fabricate(
+        :reviewable_score,
+        reviewable: review,
+        reviewable_score_type: ReviewableScore.types[:spam],
+      )
+    end
     fab!(:log) do
       AiSpamLog.create!(
         post: post,

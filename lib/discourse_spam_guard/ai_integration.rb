@@ -42,16 +42,23 @@ module DiscourseSpamGuard
           .where(id: logs.map(&:post_id))
           .select(:id, :topic_id, :post_number)
           .index_by(&:id)
+      spam_scores = ReviewableScore.where(reviewable_score_type: ReviewableScore.types[:spam])
       reviews =
-        ReviewableFlaggedPost.where(
-          target_id: logs.map(&:post_id),
-          target_created_by: user,
-        ).index_by(&:target_id)
+        ReviewableFlaggedPost
+          .where(
+            target_id: logs.map(&:post_id),
+            target_created_by: user,
+            id: spam_scores.select(:reviewable_id),
+          )
+          .order(id: :desc)
+          .to_a
+      reviews_by_id = reviews.index_by(&:id)
+      fallback_reviews = reviews.group_by(&:target_id).transform_values(&:first)
       staff = User.where("id > 0 AND (admin OR moderator)").select(:id)
       decisions =
         ReviewableScore
           .where(
-            reviewable_id: reviews.values.map(&:id),
+            reviewable_id: reviews.map(&:id),
             reviewable_score_type: ReviewableScore.types[:spam],
             reviewed_by_id: staff,
           )
@@ -63,7 +70,9 @@ module DiscourseSpamGuard
           logs.filter_map do |log|
             post = post_by_id[log.post_id]
             next unless post && guardian.can_see?(post)
-            review = reviews[post.id]
+            review =
+              log.reviewable_id ? reviews_by_id[log.reviewable_id] : fallback_reviews[post.id]
+            review = nil if review && review.target_id != post.id
             outcome =
               if review&.pending?
                 "pending"

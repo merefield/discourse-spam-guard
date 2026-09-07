@@ -2,7 +2,7 @@ import Component from "@glimmer/component";
 import { concat } from "@ember/helper";
 import { service } from "@ember/service";
 import getURL from "discourse/lib/get-url";
-import { eq } from "discourse/truth-helpers";
+import { and, eq } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import DRelativeDate from "discourse/ui-kit/d-relative-date";
 import { i18n } from "discourse-i18n";
@@ -47,7 +47,7 @@ export default class SpamGuardAiEvidence extends Component {
                     href={{getURL (concat "/review/" entry.reviewable_id)}}
                   >{{i18n "spam_guard.ai.review"}}</a>
                 {{/if}}
-                {{#if (eq entry.outcome "confirmed")}}
+                {{#if (and @canReport (eq entry.outcome "confirmed"))}}
                   <DButton
                     @label="spam_guard.ai.report"
                     @action={{@onReport}}

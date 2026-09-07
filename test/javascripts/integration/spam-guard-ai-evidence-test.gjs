@@ -54,6 +54,43 @@ module("Integration | Component | SpamGuardAiEvidence", function (hooks) {
       .exists("staff can open the original review");
   });
 
+  test("confirmed findings on staff accounts retain evidence without a report action", async function (assert) {
+    this.currentUser.set("admin", true);
+    const user = { id: 42, admin: false, moderator: true };
+    pretender.get("/admin/plugins/discourse-spam-guard/accounts/42.json", () =>
+      response({
+        enabled: false,
+        allowed: false,
+        scan: null,
+        ai_evidence: {
+          entries: [
+            {
+              post_id: 1,
+              post_url: "/t/1/1",
+              is_spam: true,
+              outcome: "confirmed",
+              checked_at: "2026-09-07T10:00:00Z",
+            },
+          ],
+        },
+      })
+    );
+    await render(<template><SpamGuardUser @user={{user}} /></template>);
+    await click(".spam-guard-user__toggle");
+    assert
+      .dom(".spam-guard-ai-evidence h4")
+      .hasText(
+        i18n("spam_guard.ai.outcome.confirmed"),
+        "retained evidence stays visible"
+      );
+    assert
+      .dom(".spam-guard-ai-evidence__actions button")
+      .doesNotExist("staff targets cannot open a report");
+    assert
+      .dom(".spam-guard-submission")
+      .doesNotExist("the action matches submission UI availability");
+  });
+
   test("AI evidence is hidden from moderators", async function (assert) {
     this.currentUser.setProperties({ admin: false, moderator: true });
     const evidence = { entries: [] };

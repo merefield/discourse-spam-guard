@@ -95,6 +95,45 @@ RSpec.describe DiscourseSpamGuard::AiIntegration do
         expect(DiscourseSpamGuard::SubmissionCandidate.latest(user)).to be_nil
       end
 
+      it "includes Uncategorized posts in findings and pending review reuse" do
+        log = ai_log
+        SiteSetting.allow_uncategorized_topics = true
+        post.topic.update!(category_id: SiteSetting.uncategorized_category_id)
+
+        entry = described_class.snapshot(user, guardian: admin.guardian)["entries"].sole
+        expect(entry).to include("post_id" => post.id, "reviewable_id" => log.reviewable_id)
+        expect(described_class.pending_review(user)).to eq(log.reviewable)
+      end
+
+      it "ignores unrelated flags when an AI scan has no linked review" do
+        review =
+          Fabricate(
+            :reviewable_flagged_post,
+            target: post,
+            target_created_by: user,
+            reviewable_scores: [],
+          )
+        Fabricate(
+          :reviewable_score,
+          reviewable: review,
+          reviewable_score_type: ReviewableScore.types[:inappropriate],
+        )
+        AiSpamLog.create!(post: post, llm_model: llm_model, is_spam: false)
+
+        entry = described_class.snapshot(user, guardian: admin.guardian)["entries"].sole
+        expect(entry).to include("outcome" => "unreviewed", "reviewable_id" => nil)
+      end
+
+      it "rejects a log link to a different post instead of substituting a review" do
+        log = ai_log
+        other_post = Fabricate(:post, user: user)
+        unrelated = Fabricate(:reviewable_flagged_post, target: other_post, target_created_by: user)
+        log.update!(reviewable: unrelated)
+
+        entry = described_class.snapshot(user, guardian: admin.guardian)["entries"].sole
+        expect(entry).to include("outcome" => "unreviewed", "reviewable_id" => nil)
+      end
+
       it "excludes private and old posts and limits displayed explanations" do
         private_post =
           Fabricate(:post, user: user, topic: Fabricate(:private_message_topic, user: user))
