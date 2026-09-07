@@ -30,7 +30,7 @@ module DiscourseSpamGuard
 
     def self.settings
       {
-        "version" => 6,
+        "version" => 7,
         "weights" => weights,
         "external_weights" => external_weights,
         "preset" => SiteSetting.spam_guard_preset,
@@ -122,8 +122,10 @@ module DiscourseSpamGuard
         candidates << weights.fetch("#{field}_strong_points") if strong
         scores[field] = candidates.max
       end
-      combined = tiers["email"] == "strong" && tiers["ip"] == "strong"
-      score = (scores.values + [combined ? weights["external_combined_points"] : 0]).max
+      combined = %w[email ip].all? { |field| %w[moderate strong].include?(tiers[field]) }
+      combined_points =
+        combined ? [scores["email"] + scores["ip"], weights["external_combined_points"]].min : 0
+      score = (scores.values + [combined_points]).max
       { "score" => score, "tiers" => tiers, "points" => scores, "combined" => combined }
     end
 

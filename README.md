@@ -1,107 +1,148 @@
 # Discourse Spam Guard
 
-## Permissions
+Explainable Stop Forum Spam reputation checks, account risk dashboards and moderation
+workflows for Discourse. The free plugin also supports individually approved reports
+of locally confirmed spam back to Stop Forum Spam. Licensed under GPLv2.
 
-Persistent account exemptions are admin-only, including review-queue actions.
-Moderators can view review evidence, silence accounts under their normal
-permissions, and confirm existing restrictions. The plugin's admin dashboards,
-settings and API endpoints remain admin-only.
+## Why use it?
 
-## Core integration
+Spam Guard brings external reputation and activity on your own forum together in
+one place, so staff can see why an account needs attention and decide what to do.
 
-The plugin runs against upstream Discourse without core patches. Reloadable plugin
-extensions batch-load admin user summaries at serialization and review evidence
-when the filtered review relation loads. The admin column extends core's computed
-column count through the plugin API. Core still owns filtering, permissions,
-pagination and moderation actions.
+- **Understand the evidence.** Inspect the reports, their recency, reading activity
+  and confirmed spam history behind a score instead of acting on an unexplained label.
+- **Choose how much to automate.** Start by observing, move qualifying accounts into
+  the existing staff review queue, or enable automatic silencing under stricter rules.
+- **Keep moderation in Discourse.** Open an account assessment directly from the admin
+  user list, review the evidence and manage exemptions alongside familiar staff tools.
+- **Contribute useful data back.** Report independently confirmed spam to Stop Forum
+  Spam after reviewing exactly what will be shared. Individual reporting and its
+  safeguards are included free.
 
-See the [core integration audit](docs/core-integration-audit.md).
+It complements Discourse's existing anti-spam controls. The aim is to help staff
+prioritize accounts and make informed decisions, while keeping the difference
+between suspicion, confirmed spam and an action taken explicit.
 
-See [external evidence scoring](docs/external-scoring.md) for configurable tier
-weights, thresholds and the distinction between scores and automatic actions.
+## Features
 
-## Current implementation
+- Background registration checks, an optional delayed recheck and manual account checks.
+- Email and public registration IP reputation, with optional username evidence.
+- An expandable admin user dashboard showing evidence, score breakdown, activity,
+  moderation history and action taken.
+- A compact Spam Guard column on the admin user list, linking directly to the expanded
+  dashboard. Missing assessments show grey N/A; exemptions show a labelled blue override.
+- Configurable reputation weights and thresholds, one reading adjustment, and capped
+  local signals from duplicate posts, posting bursts and staff-confirmed spam posts.
+- Observe, Review and Protect modes using Discourse's existing review and moderation tools.
+- Admin-approved spam reporting with an exact-data confirmation dialog, duplicate
+  protection, conservative delivery recovery and submission history.
 
-- Background checks for new registrations and an optional delayed recheck.
-- Observe, review and protect modes; observe is the default.
-- Email and public registration IP checks, with optional username evidence.
-- Evidence evaluated by frequency, reputation score and recency. Username-only
-  and weak or stale evidence never automatically silence an account.
-- Reading engagement contributes a capped risk adjustment, with an explanation
-  and a snapshot of the metrics. See [engagement assessment](docs/engagement-assessment.md).
-- Exact duplicate posts, posting bursts across public topics and staff-confirmed
-  spam history contribute capped local signals. Eligible accounts receive a
-  background check after posting or a flag review; local signals never authorize
-  silencing. See [thresholds and exclusions](docs/local-signals.md).
-- Review queue with explicit allow and silence actions. Allowing an account
-  exempts it from future checks and only reverses a silence still owned by this plugin.
-- Admin activity page, connection test and manual account checks. Manual checks
-  never automatically silence an account.
-- A dedicated Spam Guard column shows compact, coloured score boxes and exemptions.
-  Each box links to the account with its Spam Guard dashboard open. Missing scores
-  are grey and labelled N/A; a calculated zero remains 0%.
-  Summary data is batch loaded; browsing users never calls the provider. This
-  uses the `admin-users-list-thead-after` and `admin-users-list-td-after` outlets
-  and the `admin_user_list` serializer extension,
-  with a reloadable controller extension to batch load the page's saved results.
-- Exceptions remain manageable while automatic checks are disabled.
-- HTTPS, bounded requests, hashed cache keys, provider concurrency limiting,
-  bounded retries and an outage circuit breaker.
-- Redacted scan history with configurable retention. Pending review evidence is
-  retained until resolved. Account deletion and anonymization remove plugin records.
+Scores are rule-based indicators, not probabilities. Zero does not guarantee safety;
+reputation matches and lack of reading are signals, not proof of spam.
 
-This is an initial development implementation, not a published release. The Pro
-extension currently establishes the dependency boundary; its additional workflows
-are not implemented yet. Individual confirmed-spam reporting is included in the
-free plugin; see [reporting setup, safeguards and recovery](docs/submissions.md).
+## Installation and setup
 
-## Local installation
+Follow [Discourse's plugin installation guide](https://meta.discourse.org/t/install-plugins-in-discourse/19157)
+using `https://github.com/merefield/discourse-spam-guard.git`. Installation or upgrade
+requires the plugin migrations and a restart/rebuild of the application and background workers.
 
-The development repositories live at `~/code/discourse-spam-guard` and
-`~/code/discourse-spam-guard-pro-ext`, symlinked into `~/discourse/plugins`.
-Run the Discourse database migrations and restart Rails and Sidekiq after installing.
-The scan lookup optimization adds a concurrent index migration for existing installs.
+Open **Admin → Plugins → Spam Guard**. Enable `spam_guard_enabled` and start with
+`spam_guard_mode` set to `observe`. Checks default off. **Reputation lookups need no API key.**
+Email and IP lookups default on; username lookup defaults off. The delayed recheck
+is 24 hours by default; set `spam_guard_recheck_hours` to zero to disable it.
 
-Open Admin → Plugins → Spam Guard. Enable Spam Guard and start in observe mode.
-Review the activity before choosing review or protect. The conservative preset
-requires strong, recent email and IP evidence before an automatic silence; the
-balanced preset permits strong, recent email evidence alone. IP-only evidence
-can request review but never automatically silences an account.
+| Mode | Behaviour |
+| --- | --- |
+| Observe | Records evidence without queuing reviews or imposing restrictions. |
+| Review | Adds qualifying accounts to the staff review queue without automatic silencing. |
+| Protect | Automatically silences only when strict external-reputation rules permit it; other qualifying accounts go to review. |
 
-Checks are asynchronous and cannot guarantee stopping a first post. Existing
-Discourse rate limits, review rules and moderation tools still apply. Provider
-unavailability never authorizes a restriction. Automatic checks exclude staff,
-accounts older than seven days, trust levels above one and explicit exceptions.
-Manual lookups can examine older ordinary accounts.
+The conservative preset requires strong, recent email and IP evidence for automatic
+silencing; balanced permits strong, recent email evidence alone. IP-only, username-only
+and local signals never authorize automatic silencing. Manual checks never automatically
+silence. Scores do not replace these eligibility rules.
 
-## Data and recovery
+Checks run asynchronously and cannot guarantee stopping a first post. Existing Discourse
+rate limits and moderation controls still apply. Provider outages never authorize a
+restriction. Automatic checks exclude staff, accounts older than seven days, trust
+levels above one and explicit exemptions; manual checks can examine older ordinary accounts.
 
-Enabled email, registration IP and username checks send those identifiers to Stop
-Forum Spam. Disable identifiers your site should not transmit. Scan records store
-normalized evidence rather than raw identifiers; cache keys hash the lookup inputs.
-The provider's own data handling is separate from this plugin's local retention.
+## Scoring
 
-Use “Allow this account” from its review or admin account controls to grant an
-exception. Removing an exception does not immediately reenforce an old decision.
-Independent staff silences and suspensions are preserved. Historical action labels
-describe the action at the time of a scan, not the account's current restriction.
+When email and IP both qualify as at least moderate, their contributions are added up
+to `spam_guard_external_combined_points` (default 90). The result never falls below a
+higher individual contribution. Weak or stale matches and username evidence are not
+added. For example, moderate email (50) + moderate IP (30) + eligible zero reading (10)
+gives 90, while the action recommendation remains review.
 
-## Development
+All existing numeric defaults remain unchanged by this additive calculation. Saved
+scans keep their historical scores; rerun a check to apply the new policy.
 
-GitHub Actions uses Discourse's standard reusable plugin workflow on pull requests
-and pushes to `main`. It runs lint, backend, frontend, system and model annotation
-checks against upstream Discourse's `latest` branch. The free plugin's tests do
-not require the Pro extension. CI uses unmodified upstream core, including for the batch-query and user-list
-layout regression tests.
+See [external scoring](docs/external-scoring.md), [reading activity](docs/engagement-assessment.md),
+[local signals](docs/local-signals.md) and [status design](docs/status-design.md).
 
-Backend tests: `LOAD_PLUGINS=1 bin/rspec plugins/discourse-spam-guard/spec`.
-Browser tests: `bin/qunit --standalone --target discourse-spam-guard`.
+## Reporting confirmed spam
 
-This development checkout contains unrelated plugins with a conflicting
-`mime-types-data` dependency. Filtered local test bootstraps in `/tmp` were used
-to load only the two Spam Guard plugins. `bin/qunit` currently overwrites the
-`LOAD_PLUGINS` environment variable, so a temporary wrapper preserves the filter.
-These wrappers do not modify Discourse core and are not required on a clean checkout.
+Reporting has separate controls: enable `spam_guard_submissions_enabled` and configure
+the secret `spam_guard_submission_api_key`. Reporting, retained evidence and recovery
+remain accessible when lookups are disabled.
 
-See [status design](docs/status-design.md) for evidence colours, accessible labels
-and the distinction between evidence and actions.
+Open a user's Spam Guard dashboard and choose **Preview report**. The confirmation
+dialog shows the destination, exact identifiers and evidence. The admin must explicitly
+agree before submitting. Eligibility requires independently staff-confirmed spam in a
+public topic; suspicious registrations and high scores alone do not qualify.
+
+After approval, the dashboard shows **Queued**. Click **Refresh submission status** to
+retrieve the result without reloading the page. Success requires explicit acceptance
+from Stop Forum Spam. Uncertain deliveries are never blindly retried. Review and Protect
+modes do not automatically submit reports.
+
+See [reporting setup, safeguards, retention and recovery](docs/submissions.md).
+
+## Permissions and privacy
+
+Admin dashboards, user-list summaries, settings, reporting and persistent exemptions
+are admin-only. Moderators can view review evidence and take actions permitted by
+Discourse's normal moderation permissions.
+
+Enabled reputation lookups send the selected identifiers to Stop Forum Spam. Reporting
+sends the approved identifiers and evidence, which the provider may publish. The API key
+stays server-side. Scan records store normalized evidence; lookup cache keys hash inputs.
+Submission records store internal IDs, a payload hash, status and history without raw
+email, IP, post content or credentials.
+
+Account deletion and anonymization remove plugin records. Submission records otherwise
+remain independently of scan retention to prevent duplicate reports. Local removal or an
+exemption does not retract a report already sent to Stop Forum Spam.
+
+**Allow this account** grants an exemption and only reverses a silence still owned by
+Spam Guard. Independent staff silences and suspensions are preserved. Removing an
+exemption does not immediately reenforce an old decision.
+
+## Core integration and development
+
+The plugin runs against upstream Discourse without core patches. It uses the plugin API,
+admin outlets, core reviewables and reloadable extensions to batch-load saved evidence.
+Browsing the user list does not call Stop Forum Spam. See the [integration audit](docs/core-integration-audit.md).
+
+GitHub Actions uses Discourse's standard reusable plugin workflow against upstream
+`latest`, covering lint, backend, frontend, system and model annotations.
+
+```sh
+LOAD_PLUGINS=1 bin/rspec plugins/discourse-spam-guard/spec
+bin/qunit --standalone --target discourse-spam-guard
+```
+
+Run these from a Discourse checkout with the plugin installed. Provider requests in tests
+are mocked; tests do not submit real reports. The development repositories can be symlinked
+from `~/code` into `~/discourse/plugins`. Unrelated installed plugins may require an isolated
+test checkout to avoid dependency conflicts.
+
+## Sponsorship and Pro
+
+All features above are free. The Pro extension currently establishes a dependency boundary;
+its advanced workflows are not implemented yet. Individual reporting and its safeguards
+remain part of the free plugin.
+
+[Support ongoing development](https://github.com/sponsors/merefield).
+The [Meta introduction](docs/meta-topic.md) is a ready-to-paste plugin topic draft.
