@@ -199,18 +199,81 @@ RSpec.describe DiscourseSpamGuard::Policy do
       )
     end
 
-    it "uses distinct default weights without summing correlated identifiers" do
+    it "adds qualifying identifiers while retaining individual scores and action rules" do
       strong = email.merge("frequency" => 20, "confidence" => 99)
       moderate_ip = ip.merge("frequency" => 5, "confidence" => 50)
       [
         [{ "email" => strong }, 85, "review"],
         [{ "ip" => moderate_ip }, 30, "watch"],
         [{ "ip" => strong }, 50, "review"],
-        [{ "email" => email, "ip" => moderate_ip }, 50, "review"],
+        [{ "email" => email, "ip" => moderate_ip }, 80, "review"],
+        [{ "email" => strong, "ip" => moderate_ip }, 90, "review"],
         [{ "email" => strong, "ip" => strong }, 90, "silence"],
       ].each do |evidence, points, decision|
         expect(assess(evidence)).to include("score" => points, "decision" => decision)
       end
+    end
+
+    it "scores the calibration account at 90 without authorizing automatic silence" do
+      result =
+        assess(
+          {
+            "email" =>
+              email.merge(
+                "frequency" => 7,
+                "confidence" => 60.87,
+                "last_seen" => 1.day.ago.iso8601,
+              ),
+            "ip" =>
+              ip.merge(
+                "frequency" => 32,
+                "confidence" => 87.67,
+                "last_seen" => 23.hours.ago.iso8601,
+              ),
+          },
+          adjustment: 10,
+        )
+      expect(result).to include("base_score" => 80, "score" => 90, "decision" => "review")
+      expect(result["external_scoring"]).to include(
+        "combined" => true,
+        "points" => {
+          "email" => 50,
+          "ip" => 30,
+        },
+      )
+    end
+
+    it "caps addition without lowering a higher individual score or creating a floor" do
+      evidence = { "email" => email, "ip" => ip.merge("frequency" => 5, "confidence" => 50) }
+      SiteSetting.spam_guard_external_combined_points = 60
+      expect(assess(evidence)["score"]).to eq(60)
+      SiteSetting.spam_guard_email_moderate_points = 95
+      expect(assess(evidence)["score"]).to eq(95)
+      SiteSetting.spam_guard_external_combined_points = 0
+      expect(assess(evidence)["score"]).to eq(95)
+      SiteSetting.spam_guard_external_combined_points = 90
+      SiteSetting.spam_guard_email_moderate_points = 25
+      SiteSetting.spam_guard_ip_moderate_points = 25
+      strong = email.merge("frequency" => 20, "confidence" => 99)
+      SiteSetting.spam_guard_email_strong_points = 25
+      SiteSetting.spam_guard_ip_strong_points = 25
+      expect(assess({ "email" => strong, "ip" => strong })["score"]).to eq(50)
+    end
+
+    it "does not add stale, weak, username-only or missing identifiers" do
+      moderate_ip = ip.merge("frequency" => 5, "confidence" => 50)
+      [
+        ip,
+        moderate_ip.merge("last_seen" => 31.days.ago.iso8601),
+        moderate_ip.merge("last_seen" => nil),
+        moderate_ip.merge("blacklisted" => true),
+      ].each do |excluded_ip|
+        result = assess({ "email" => email, "ip" => excluded_ip })
+        expect(result["base_score"]).to eq(50)
+        expect(result["external_scoring"]["combined"]).to eq(false)
+      end
+      expect(assess({ "email" => email, "username" => email })["base_score"]).to eq(50)
+      expect(assess({ "email" => email })["base_score"]).to eq(50)
     end
 
     it "requires both moderate thresholds and a recent, dated, valid match" do
