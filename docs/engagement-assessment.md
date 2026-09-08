@@ -26,11 +26,11 @@ each day. Time recorded by Discourse is a proxy for attention, not proof. Counte
 can be gamed. Initial thresholds are heuristics requiring validation against actual
 moderator outcomes; they are neither calibrated probabilities nor percentages.
 
-External evidence supplies the highest applicable configurable tier score; see
-[external scoring](external-scoring.md) for the policy version 6 defaults. Add the engagement adjustment to local evidence, apply
-the configured upper local cap (default 100), then add external base points and
-clamp the final score to 0–100. Negative reading adjustments can reduce external
-concern when local evidence is absent. No intermediate zero-floor removes them.
+External evidence adds weighted, capped email and IP report counts after recency;
+see [external scoring](external-scoring.md). Posting and extension points share the
+configured local cap. Reading adjusts that combined suspicion once, with a minimum
+of zero. Confirmed spam is added afterwards and cannot be reduced by reading.
+The final score is capped at 100.
 Zero reading alone changes a clear assessment to “Some concern”; it never creates
 a review or sanction. Reading reassurance below -5 converts a silence recommendation to review,
 independently of configurable external score weights.

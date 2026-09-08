@@ -33,7 +33,7 @@ between suspicion, confirmed spam and an action taken explicit.
   moderation history and action taken.
 - A compact Spam Guard column on the admin user list, linking directly to the expanded
   dashboard. Missing assessments show grey N/A; exemptions show a labelled blue override.
-- Configurable reputation weights and thresholds, one reading adjustment, and capped
+- Configurable per-report weights and caps, one reading adjustment, and capped
   local signals from duplicate posts, posting bursts and staff-confirmed spam posts.
 - Observe, Review and Protect modes using Discourse's existing review and moderation tools.
 - Admin-approved spam reporting with an exact-data confirmation dialog, duplicate
@@ -71,17 +71,24 @@ levels above one and explicit exemptions; manual checks can examine older ordina
 
 ## Scoring
 
-When email and IP both qualify as at least moderate, their contributions are added up
-to `spam_guard_external_combined_points` (default 90). The result never falls below a
-higher individual contribution. Weak or stale matches and username evidence are not
-added. For example, moderate email (50) + moderate IP (30) + eligible zero reading (10)
-gives 90, while the action recommendation remains review.
+Email reports contribute 8 points each (cap 60); registration IP reports contribute
+3 points each (cap 30). Each identifier receives full weight if last reported within
+7 days, half within 30 days, and zero beyond 30 days or without a valid date. Counts
+are cumulative; the latest report date does not date every report.
 
-All existing numeric defaults remain unchanged by this additive calculation. Saved
-scans keep their historical scores; rerun a check to apply the new policy.
+Reading adjusts external and posting suspicion once, with a minimum of zero.
+Staff-confirmed spam then adds 85 points per post, unaffected by reassuring reading.
+The final score is capped at 100. Weights and caps are configurable; action rules
+remain separate. Username and AI evidence add no numeric points.
 
-See [external scoring](docs/external-scoring.md), [reading activity](docs/engagement-assessment.md),
-[local signals](docs/local-signals.md) and [status design](docs/status-design.md).
+The account dashboard places a succinct saved-score explanation above a compact
+calculation column and separate evidence cards. It stacks on smaller screens, with
+methodology expandable and actions below. Saved assessments keep their original
+scores and weights; older records show a legacy breakdown. Recheck to apply version 8.
+
+See [external scoring and upgrade details](docs/external-scoring.md),
+[reading activity](docs/engagement-assessment.md), [local signals](docs/local-signals.md)
+and [status design](docs/status-design.md).
 
 ## Discourse AI integration
 

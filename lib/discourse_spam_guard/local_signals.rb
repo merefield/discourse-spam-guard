@@ -61,17 +61,14 @@ module DiscourseSpamGuard
           reviewed_at: HISTORY_WINDOW.ago..Time.current,
         )
       points_per_post = weights.fetch("confirmed_spam")
-      reassurance =
-        -weights.values_at("reading_limited", "reading_meaningful", "reading_sustained").min
       history_limit =
-        if points_per_post.positive?
-          [
-            HISTORY_LIMIT,
-            ((weights.fetch("local_cap") + reassurance).fdiv(points_per_post)).ceil,
-          ].max
-        else
-          HISTORY_LIMIT
-        end
+        (
+          if points_per_post.positive?
+            [HISTORY_LIMIT, (100.fdiv(points_per_post)).ceil].max
+          else
+            HISTORY_LIMIT
+          end
+        )
       confirmed_posts =
         ReviewableFlaggedPost
           .approved

@@ -9,6 +9,10 @@ RSpec.describe "Configure Spam Guard risk weights" do
   it "lets an admin find and save the per-post weight and reading adjustments" do
     settings_page.visit_filtered_plugin_setting("spam_guard")
     %w[
+      email_report_points
+      email_points_cap
+      ip_report_points
+      ip_points_cap
       ai_integration
       reading_limited_adjustment
       reading_meaningful_adjustment
@@ -16,16 +20,8 @@ RSpec.describe "Configure Spam Guard risk weights" do
       no_reading_adjustment
       confirmed_spam_points
       local_points_cap
-      external_weak_points
-      email_moderate_points
-      email_strong_points
-      ip_moderate_points
-      ip_strong_points
-      external_combined_points
       email_moderate_frequency
       email_moderate_confidence
-      ip_moderate_frequency
-      ip_moderate_confidence
     ].each { |suffix| expect(settings_page).to have_setting("spam_guard_#{suffix}") }
     expect(settings_page.find_setting("spam_guard_confirmed_spam_points")).to have_text(
       "Risk points per distinct post",
@@ -39,15 +35,12 @@ RSpec.describe "Configure Spam Guard risk weights" do
       "spam_guard_confirmed_spam_points",
       value: "75",
     )
-    expect(settings_page.find_setting("spam_guard_email_moderate_points")).to have_text(
-      "cannot authorize automatic silencing",
+    expect(settings_page.find_setting("spam_guard_email_report_points")).to have_text(
+      "does not change moderation thresholds",
     )
-    settings_page.fill_setting("spam_guard_email_moderate_points", "55")
-    settings_page.save_setting("spam_guard_email_moderate_points")
-    expect(settings_page).to have_overridden_setting(
-      "spam_guard_email_moderate_points",
-      value: "55",
-    )
+    settings_page.fill_setting("spam_guard_email_report_points", "9")
+    settings_page.save_setting("spam_guard_email_report_points")
+    expect(settings_page).to have_overridden_setting("spam_guard_email_report_points", value: "9")
     page.refresh
     expect(settings_page).to have_overridden_setting(
       "spam_guard_confirmed_spam_points",
