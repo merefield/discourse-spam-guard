@@ -70,6 +70,7 @@
 }
 
 .spam-guard-evidence {
+  container: spam-guard-evidence / inline-size;
   overflow-wrap: anywhere;
   text-align: start;
   display: grid;
@@ -84,8 +85,18 @@
     gap: 1.5rem;
     align-items: stretch;
 
+    @container spam-guard-evidence (min-width: 54rem) {
+      gap: 1rem;
+    }
+
     > .spam-guard-risk-score {
       flex: 1 1 13rem;
+
+      @container spam-guard-evidence (min-width: 54rem) {
+        // Match the calculation card’s outer flex basis, including padding and borders.
+        box-sizing: border-box;
+        flex-basis: calc(17rem + 2.2rem + 2px);
+      }
     }
   }
 
@@ -93,6 +104,10 @@
     flex: 2 1 18rem;
     min-width: 0;
     padding-block: 0.5rem;
+
+    @container spam-guard-evidence (min-width: 54rem) {
+      flex: 3 1 32rem;
+    }
   }
 
   &__title {

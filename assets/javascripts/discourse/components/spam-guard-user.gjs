@@ -179,18 +179,6 @@ export default class SpamGuardUser extends Component {
           {{#if this.expanded}}
             {{#if this.loading}}<p>{{i18n "loading"}}</p>{{/if}}
             {{#if this.state}}
-              <SpamGuardEvidence
-                @scan={{this.state.scan}}
-                @exempt={{this.state.allowed}}
-              >
-                <SpamGuardAiEvidence
-                  @evidence={{this.state.ai_evidence}}
-                  @canReport={{this.canManage}}
-                  @onRefresh={{this.load}}
-                  @loading={{this.loading}}
-                  @onReport={{this.openReport}}
-                />
-              </SpamGuardEvidence>
               {{#if this.canManage}}
                 <div class="spam-guard-user__actions">
                   {{#if this.state.enabled}}
@@ -216,6 +204,19 @@ export default class SpamGuardUser extends Component {
                       "spam_guard.exempt"
                     }}</p>{{/if}}
               {{/if}}
+
+              <SpamGuardEvidence
+                @scan={{this.state.scan}}
+                @exempt={{this.state.allowed}}
+              >
+                <SpamGuardAiEvidence
+                  @evidence={{this.state.ai_evidence}}
+                  @canReport={{this.canManage}}
+                  @onRefresh={{this.load}}
+                  @loading={{this.loading}}
+                  @onReport={{this.openReport}}
+                />
+              </SpamGuardEvidence>
 
               {{#if this.canManage}}
                 <SpamGuardSubmission
