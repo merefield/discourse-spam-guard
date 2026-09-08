@@ -15,9 +15,9 @@ that hashing occurs above the limit.
 
 History uses EXISTS for matching scores and normally stops after three qualifying
 reviewables. Lower configured per-post weights increase the bound to enough posts
-to reach the local cap even with the strongest configured reading reassurance:
-`max(3, ceil((local_cap + reassurance) / points_per_post))`. A zero weight uses
-three rows for review evidence; positive weights require at most 200 rows under
+to reach the final score cap without any discount from reading:
+`max(3, ceil(100 / points_per_post))`. A zero weight uses
+three rows for review evidence; positive weights require at most 100 rows under
 the setting bounds. Discourse's unique (type, target_id) index guarantees each flagged
 post is counted once. No DISTINCT, duplicate flag expansion or deduplication sort
 is needed. The populated plan uses existing author and score-reviewable indexes.

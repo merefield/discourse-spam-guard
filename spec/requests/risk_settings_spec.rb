@@ -14,17 +14,13 @@ RSpec.describe Admin::SiteSettingsController do
       "spam_guard_reading_sustained_adjustment" => [-15, -100, 0],
       "spam_guard_no_reading_adjustment" => [10, 0, 100],
       "spam_guard_confirmed_spam_points" => [85, 0, 100],
+      "spam_guard_email_report_points" => [8, 0, 100],
+      "spam_guard_email_points_cap" => [60, 0, 100],
+      "spam_guard_ip_report_points" => [3, 0, 100],
+      "spam_guard_ip_points_cap" => [30, 0, 100],
       "spam_guard_local_points_cap" => [100, 0, 100],
-      "spam_guard_external_weak_points" => [20, 0, 100],
-      "spam_guard_email_moderate_points" => [50, 0, 100],
-      "spam_guard_email_strong_points" => [85, 0, 100],
-      "spam_guard_ip_moderate_points" => [30, 0, 100],
-      "spam_guard_ip_strong_points" => [50, 0, 100],
-      "spam_guard_external_combined_points" => [90, 0, 100],
       "spam_guard_email_moderate_confidence" => [50, 0, 100],
-      "spam_guard_ip_moderate_confidence" => [50, 0, 100],
       "spam_guard_email_moderate_frequency" => [3, 1, 10_000],
-      "spam_guard_ip_moderate_frequency" => [5, 1, 10_000],
     }.each do |name, (default, minimum, maximum)|
       setting = settings.fetch(name)
       expect(setting["default"].to_i).to eq(default)

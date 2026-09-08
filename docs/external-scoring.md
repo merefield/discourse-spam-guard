@@ -1,69 +1,88 @@
-# External evidence scoring
+# Report-count scoring (policy version 8)
 
-Policy version 7 separates the external risk score from automatic-action eligibility.
-These are rule-based weights, not calibrated probabilities. All settings below have
-the `spam_guard_` prefix and are available in the free plugin's admin settings.
+The displayed percentage is a rule-based concern score, not a probability of spam.
+Action eligibility is assessed separately: changing display weights cannot authorize
+an automatic silence or remove an evidence-based requirement for review.
 
-| Evidence | Default points | Weight setting |
+## Calculation and defaults
+
+| Contribution | Default | Setting |
 | --- | --- | --- |
-| Weak, stale, undated or informational match | 20 | `external_weak_points` |
-| Moderate email | 50 | `email_moderate_points` |
-| Strong email | 85 | `email_strong_points` |
-| Moderate registration IP | 30 | `ip_moderate_points` |
-| Strong registration IP | 50 | `ip_strong_points` |
-| Both email and IP at least moderate: cap on their sum | 90 | `external_combined_points` |
+| Email report | 8 points | `spam_guard_email_report_points` |
+| Email cap, before recency | 60 points | `spam_guard_email_points_cap` |
+| Registration IP report | 3 points | `spam_guard_ip_report_points` |
+| IP cap, before recency | 30 points | `spam_guard_ip_points_cap` |
+| Staff-confirmed spam | 85 per distinct post | `spam_guard_confirmed_spam_points` |
 
-Moderate email requires at least 3 reports and reputation 50; moderate IP requires
-at least 5 reports and reputation 50. Configure these through
-`email_moderate_frequency`, `email_moderate_confidence`, `ip_moderate_frequency`
-and `ip_moderate_confidence`. Both count and reputation must qualify. Evidence
-must have a valid last-report time within `max_evidence_age_days` (default 30),
-not in the future, and must not be a provider blacklist-only result. Missing
-reputation cannot qualify even when the configured threshold is zero.
+All five settings accept 0–100. The existing reading settings remain configurable.
 
-Existing strong thresholds remain unchanged: email requires at least 5 reports
-and reputation 90; IP requires at least 10 reports and reputation 95. Strong
-matches also qualify for their moderate weight. The highest applicable weight
-wins within each identifier. When both email and IP qualify as moderate or strong,
-their contributions are added and capped by `external_combined_points`. The
-external score is the highest of that capped sum and the individual contributions,
-so an administrator's higher individual weight is never reduced by the cap.
-Weak, stale and username-only evidence is not added. The cap limits accumulation
-of reports which may describe the same incident; it is not a fixed score or floor.
-All numeric defaults and automatic-action thresholds are unchanged.
-No match contributes zero, regardless of configured weights.
+For each identifier: `min(report count × weight, identifier cap) × recency multiplier`.
+The two contributions are always added. Username matches, provider blacklist results
+and AI classifications add no points. Provider reputation values remain visible and
+still participate in the separate moderation rules; they are not counted again in
+numeric scoring.
 
-Moderate email requests review; moderate IP and username evidence alone remain
-watch-only. Strong IP requests review. Automatic silencing still requires the
-existing strong-evidence preset, Protect mode, an eligible automatic check and
-no reading adjustment below -5. Changing point weights cannot grant automatic
-silencing or remove evidence-based review. A high score alone does not authorize
-a sanction. Manual checks never automatically silence.
+Recency is a fixed, simple rule applied **after** each identifier cap:
 
-The external score is added to the existing capped local contribution (including
-one reading adjustment), then capped at 0–100. For nine email reports at reputation
-66.67 last reported 21 hours ago, plus two weak IP reports and eligible zero
-reading, the result is max(50, 20) + 10 = 60, with a review recommendation.
-For seven email reports at reputation 60.87 and 32 IP reports at reputation 87.67,
-both reported within a day, the external score is min(50 + 30, 90) = 80.
-With eligible zero reading, the final score is 90 and the recommendation remains
-review. Strong email plus moderate IP gives min(85 + 30, 90) = 90 before reading.
-Observe mode still records the result without taking action.
+- Last reported within 7 days: full weight (×1).
+- More than 7 and up to 30 days: half weight (×0.5).
+- Older, missing, invalid or future report date: zero points.
 
-Each new scan stores the weight and threshold snapshot, identifier tiers and
-contributions. Historical scans retain their saved scores and presentation.
-Rerun a manual check to use the new calculation; deployment does not rewrite old scans
-or automatically recheck all existing users.
+Counts are cumulative and need not represent independent reports. The date is the
+last report date, not the age of every report. The multiplier is a heuristic applied
+to that cumulative count. Half-point results are retained, not rounded to integers.
+The recency windows are recorded with each assessment.
 
-## Calibration around the display bands
+```
+external = email points + IP points
+local suspicion = min(posting points + extension points, configured local cap)
+suspicion = max(0, external + local suspicion + reading adjustment)
+final score = min(100, suspicion + confirmed spam points)
+```
 
-A score of 0 is green; 1–30 is yellow (Suspicious); 31–69 is amber (Moderate
-concern); 70–100 is red (High concern). These bands describe the numeric score,
-not the action recommendation. Exemptions remain blue, unavailable scores grey.
+Duplicates and posting bursts retain their shared 25-point cap. Extension points
+retain their own 25-point cap. `spam_guard_local_points_cap` now caps posting and
+extension contributions together before reading; it no longer caps or discounts
+confirmed spam. Confirmed posts are added after the zero floor, so reassuring
+reading cannot cancel a confirmed incident. Failed/skipped provider checks remain
+unscored; local evidence can still require review without inventing an external score.
 
-Strong email and a staff-confirmed spam post each default to 85 points. Subtracting
-the strongest default reading reassurance of 15 still leaves 70, in the red band.
-Both strong external identifiers default to 90, leaving 75 after that reassurance.
-Two confirmed posts still reach 100 by multiplication and the normal final cap.
-Custom reading weights and score weights can move these results between bands.
-Changing a default does not overwrite an administrator's explicit saved setting.
+## Calibration examples
+
+These illustrate the defaults, not measured detection accuracy.
+
+| Account | Email | IP | Reading | Confirmed | Final |
+| --- | --- | --- | --- | --- | --- |
+| JeffersonAlu92 | 3 × 8 = 24 | 5 × 3 = 15 | +10 | 0 | 49 |
+| MelAtkinson533 | min(9 × 8, 60) = 60 | 2 × 3 × 0.5 = 3 (last report 20 days ago) | +10 | 0 | 73 |
+| MarilynnSorens | 7 × 8 = 56 | min(32 × 3, 30) = 30 | +10 | 0 | 96 |
+| TylerBeck | 0 | 0 | −15, suspicion floored at 0 | 85 | 85 |
+
+Two confirmed posts contribute 170 before the final cap, producing 100 even with
+reading reassurance. With custom per-post weights, enough history is sampled to
+reach 100: `max(3, ceil(100 / per-post points))`; zero weight samples three for the
+independent review requirement.
+
+## Upgrade and saved assessments
+
+Version 8 replaces the six weak/moderate/strong/combined point settings with four
+per-report/cap settings. The two moderate-IP thresholds, which only selected scoring
+tiers, are removed too. Old overrides are not translated because the formulas are
+not equivalent. Review/protection settings and their values remain unchanged.
+Existing database setting rows need no migration and are no longer exposed or read;
+saved policy JSON retains the historical settings used for each scan.
+
+Saved assessments are never rescored on display. Version 8 stores identifier counts,
+weights, caps, recency factors and calculation subtotals. The dashboard summary and
+calculation use that snapshot, not current site settings or the current date. Older
+assessments show a labelled legacy breakdown and their original score. Recheck an
+account to apply the new defaults. No migration, automatic sweep or retroactive
+moderation action is introduced.
+
+## Dashboard
+
+A full-width score and succinct explanation sit above a calculation column and
+separate evidence cards. On narrow screens the calculation and evidence stack.
+Actions follow the evidence. Detailed methodology is expandable. AI findings remain
+informational; exemptions preserve their labelled blue treatment, and unknown scores
+remain N/A. The user-list score uses the same saved assessment and colour bands.

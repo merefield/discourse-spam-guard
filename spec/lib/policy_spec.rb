@@ -22,8 +22,8 @@ RSpec.describe DiscourseSpamGuard::Policy do
       end
     end
 
-    it "applies the configured combined cap to local and extension evidence" do
-      SiteSetting.spam_guard_local_points_cap = 90
+    it "caps posting and extension evidence separately from confirmed spam" do
+      SiteSetting.spam_guard_local_points_cap = 25
       assessment =
         described_class.assess(
           {},
@@ -34,15 +34,12 @@ RSpec.describe DiscourseSpamGuard::Policy do
           status: "checked",
           local_signals: {
             "confirmed_spam_posts" => 1,
-            "adjustment" => 80,
+            "posting_points" => 20,
+            "history_points" => 85,
           },
           additional_evidence: [{ "label" => "Additional evidence", "points" => 25 }],
         )
-      expect(assessment).to include(
-        "score" => 90,
-        "additional_points" => 25,
-        "decision" => "review",
-      )
+      expect(assessment).to include("score" => 95, "additional_points" => 5, "decision" => "review")
     end
     it "requests local review during an outage without inventing an external score" do
       assessment =
@@ -154,186 +151,124 @@ RSpec.describe DiscourseSpamGuard::Policy do
     end
   end
 
-  describe "external scoring tiers" do
-    let(:email) do
-      {
-        "appears" => true,
-        "frequency" => 9,
-        "confidence" => 66.67,
-        "last_seen" => 21.hours.ago.iso8601,
-      }
-    end
-    let(:ip) do
-      {
-        "appears" => true,
-        "frequency" => 2,
-        "confidence" => 1.01,
-        "last_seen" => 20.days.ago.iso8601,
-      }
+  describe "report-count scoring" do
+    let(:match) do
+      { "appears" => true, "frequency" => 3, "confidence" => 40, "last_seen" => 2.days.ago.iso8601 }
     end
 
-    define_method(:assess) do |evidence, adjustment: 0, settings: described_class.settings|
+    define_method(:assess) do |evidence, reading: 0, settings: described_class.settings, local: nil|
       described_class.assess(
         evidence,
         settings,
         engagement: {
-          "adjustment" => adjustment,
+          "adjustment" => reading,
         },
         status: "checked",
+        local_signals: local,
       )
     end
 
-    it "scores recent moderate email evidence at 60 with no reading and requests review" do
-      result = assess({ "email" => email, "ip" => ip }, adjustment: 10)
-      expect(result).to include("base_score" => 50, "score" => 60, "decision" => "review")
-      expect(result["external_scoring"]).to include(
-        "tiers" => {
-          "email" => "moderate",
-          "ip" => "weak",
-        },
-        "points" => {
-          "email" => 50,
-          "ip" => 20,
-        },
-        "combined" => false,
-      )
-    end
-
-    it "adds qualifying identifiers while retaining individual scores and action rules" do
-      strong = email.merge("frequency" => 20, "confidence" => 99)
-      moderate_ip = ip.merge("frequency" => 5, "confidence" => 50)
+    it "calibrates the supplied accounts using cumulative counts and each identifier's recency" do
       [
-        [{ "email" => strong }, 85, "review"],
-        [{ "ip" => moderate_ip }, 30, "watch"],
-        [{ "ip" => strong }, 50, "review"],
-        [{ "email" => email, "ip" => moderate_ip }, 80, "review"],
-        [{ "email" => strong, "ip" => moderate_ip }, 90, "review"],
-        [{ "email" => strong, "ip" => strong }, 90, "silence"],
-      ].each do |evidence, points, decision|
-        expect(assess(evidence)).to include("score" => points, "decision" => decision)
+        [3, 5, 2, 5, 49],
+        [9, 2, 1, 20, 73],
+        [7, 32, 1, 1, 96],
+      ].each do |emails, ips, email_age, ip_age, expected|
+        result =
+          assess(
+            {
+              "email" =>
+                match.merge("frequency" => emails, "last_seen" => email_age.days.ago.iso8601),
+              "ip" => match.merge("frequency" => ips, "last_seen" => ip_age.days.ago.iso8601),
+            },
+            reading: 10,
+          )
+        expect(result["score"]).to eq(expected)
+        expect(result["calculation"]["total"]).to eq(expected)
       end
     end
 
-    it "scores the calibration account at 90 without authorizing automatic silence" do
-      result =
-        assess(
-          {
-            "email" =>
-              email.merge(
-                "frequency" => 7,
-                "confidence" => 60.87,
-                "last_seen" => 1.day.ago.iso8601,
-              ),
-            "ip" =>
-              ip.merge(
-                "frequency" => 32,
-                "confidence" => 87.67,
-                "last_seen" => 23.hours.ago.iso8601,
-              ),
-          },
-          adjustment: 10,
-        )
-      expect(result).to include("base_score" => 80, "score" => 90, "decision" => "review")
-      expect(result["external_scoring"]).to include(
-        "combined" => true,
-        "points" => {
-          "email" => 50,
-          "ip" => 30,
-        },
-      )
-    end
-
-    it "caps addition without lowering a higher individual score or creating a floor" do
-      evidence = { "email" => email, "ip" => ip.merge("frequency" => 5, "confidence" => 50) }
-      SiteSetting.spam_guard_external_combined_points = 60
-      expect(assess(evidence)["score"]).to eq(60)
-      SiteSetting.spam_guard_email_moderate_points = 95
-      expect(assess(evidence)["score"]).to eq(95)
-      SiteSetting.spam_guard_external_combined_points = 0
-      expect(assess(evidence)["score"]).to eq(95)
-      SiteSetting.spam_guard_external_combined_points = 90
-      SiteSetting.spam_guard_email_moderate_points = 25
-      SiteSetting.spam_guard_ip_moderate_points = 25
-      strong = email.merge("frequency" => 20, "confidence" => 99)
-      SiteSetting.spam_guard_email_strong_points = 25
-      SiteSetting.spam_guard_ip_strong_points = 25
-      expect(assess({ "email" => strong, "ip" => strong })["score"]).to eq(50)
-    end
-
-    it "does not add stale, weak, username-only or missing identifiers" do
-      moderate_ip = ip.merge("frequency" => 5, "confidence" => 50)
-      [
-        ip,
-        moderate_ip.merge("last_seen" => 31.days.ago.iso8601),
-        moderate_ip.merge("last_seen" => nil),
-        moderate_ip.merge("blacklisted" => true),
-      ].each do |excluded_ip|
-        result = assess({ "email" => email, "ip" => excluded_ip })
-        expect(result["base_score"]).to eq(50)
-        expect(result["external_scoring"]["combined"]).to eq(false)
-      end
-      expect(assess({ "email" => email, "username" => email })["base_score"]).to eq(50)
-      expect(assess({ "email" => email })["base_score"]).to eq(50)
-    end
-
-    it "requires both moderate thresholds and a recent, dated, valid match" do
+    it "applies identifier caps before recency and handles exact boundaries" do
       freeze_time Time.current.change(usec: 0)
-      boundary =
-        email.merge("frequency" => 3, "confidence" => 50, "last_seen" => 30.days.ago.iso8601)
-      expect(assess({ "email" => boundary })).to include("score" => 50, "decision" => "review")
       [
-        { "frequency" => 2 },
-        { "confidence" => 49.99 },
-        { "confidence" => nil },
-        { "last_seen" => 30.days.ago.advance(seconds: -1).iso8601 },
-        { "last_seen" => 1.second.from_now.iso8601 },
-        { "last_seen" => nil },
-        { "blacklisted" => true },
-      ].each do |weakness|
-        expect(assess({ "email" => boundary.merge(weakness) })).to include(
-          "score" => 20,
+        [7.days, 60],
+        [7.days + 1.second, 30],
+        [30.days, 30],
+        [30.days + 1.second, 0],
+      ].each do |age, expected|
+        result =
+          assess({ "email" => match.merge("frequency" => 1000, "last_seen" => age.ago.iso8601) })
+        expect(result["base_score"]).to eq(expected)
+      end
+      result = assess({ "ip" => match.merge("frequency" => 1, "last_seen" => 8.days.ago.iso8601) })
+      expect(result["base_score"]).to eq(1.5)
+    end
+
+    it "keeps usernames, blacklists, undated, invalid and future-dated matches informational" do
+      [nil, "not a date", 1.day.from_now.iso8601].each do |date|
+        expect(assess({ "email" => match.merge("last_seen" => date) })).to include(
+          "base_score" => 0,
           "decision" => "watch",
         )
       end
-      expect(assess({ "email" => boundary.merge("appears" => false) })).to include(
-        "score" => 0,
-        "decision" => "allow",
+      expect(assess({ "email" => match.merge("blacklisted" => true) })["base_score"]).to eq(0)
+      expect(assess({ "email" => match.merge("appears" => false) })["base_score"]).to eq(0)
+      username_only = assess({ "username" => match })
+      expect(username_only["base_score"]).to eq(0)
+      expect(username_only.dig("external_scoring", "fields", "email", "reason")).to eq(
+        "not_checked",
       )
     end
 
-    it "uses saved configurable thresholds and weights without changing earlier assessments" do
+    it "snapshots custom report weights and caps independently of current settings" do
       saved = described_class.settings
-      before = assess({ "email" => email }, settings: saved)
-      SiteSetting.spam_guard_email_moderate_points = 65
-      expect(assess({ "email" => email })).to include("score" => 65, "decision" => "review")
-      SiteSetting.spam_guard_email_moderate_frequency = 10
-      expect(assess({ "email" => email })).to include("score" => 20, "decision" => "watch")
-      expect(assess({ "email" => email }, settings: saved)).to eq(before)
-    end
-
-    it "does not let numeric weights grant silencing or suppress evidence-based review" do
-      SiteSetting.spam_guard_email_moderate_points = 100
-      SiteSetting.spam_guard_external_weak_points = 100
-      expect(assess({ "email" => email }, adjustment: 10)).to include(
-        "score" => 100,
-        "decision" => "review",
+      before = assess({ "email" => match }, settings: saved)
+      SiteSetting.spam_guard_email_report_points = 9
+      SiteSetting.spam_guard_email_points_cap = 25
+      expect(assess({ "email" => match })["base_score"]).to eq(25)
+      expect(assess({ "email" => match }, settings: saved)).to eq(before)
+      expect(before.dig("external_scoring", "fields", "email")).to include(
+        "reports" => 3,
+        "weight" => 8,
+        "cap" => 60,
+        "multiplier" => 1,
+        "points" => 24,
       )
-      expect(assess({ "username" => email })).to include("score" => 100, "decision" => "watch")
-      SiteSetting.spam_guard_external_weak_points = 0
-      SiteSetting.spam_guard_email_moderate_points = 0
-      expect(assess({ "email" => email })).to include("score" => 0, "decision" => "review")
     end
 
-    it "keeps preset scoring consistent and preserves the reading safeguard independently of weights" do
-      strong = email.merge("frequency" => 20, "confidence" => 99)
-      expect(assess({ "email" => strong })).to include("score" => 85, "decision" => "review")
+    it "keeps review and protection thresholds independent of display weights" do
+      SiteSetting.spam_guard_email_report_points = 100
+      SiteSetting.spam_guard_email_points_cap = 100
+      expect(assess({ "email" => match })).to include("score" => 100, "decision" => "watch")
+      strong = match.merge("frequency" => 20, "confidence" => 99)
       SiteSetting.spam_guard_preset = "balanced"
-      expect(assess({ "email" => strong })).to include("score" => 85, "decision" => "silence")
-      SiteSetting.spam_guard_email_strong_points = 100
-      expect(assess({ "email" => strong }, adjustment: -10)).to include(
-        "score" => 90,
-        "decision" => "review",
-      )
+      expect(assess({ "email" => strong })).to include("score" => 100, "decision" => "silence")
+      expect(assess({ "email" => strong }, reading: -15)["decision"]).to eq("review")
+      SiteSetting.spam_guard_email_report_points = 0
+      expect(assess({ "email" => strong })).to include("score" => 0, "decision" => "silence")
+      expect(assess({ "email" => match.merge("confidence" => 50) })["decision"]).to eq("review")
+    end
+
+    it "adds confirmed spam after flooring suspicion without discounting it for reading" do
+      SiteSetting.spam_guard_local_points_cap = 0
+      [1, 2].each do |count|
+        result =
+          assess(
+            {},
+            reading: -15,
+            local: {
+              "posting_points" => 0,
+              "history_points" => count * 85,
+              "confirmed_spam_posts" => count,
+            },
+          )
+        expect(result).to include("score" => [85 * count, 100].min, "decision" => "review")
+        expect(result["calculation"]).to include(
+          "suspicion" => 0,
+          "confirmed" => count * 85,
+          "reading" => -15,
+        )
+      end
     end
   end
 

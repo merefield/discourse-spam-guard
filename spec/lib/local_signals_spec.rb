@@ -184,8 +184,8 @@ RSpec.describe DiscourseSpamGuard::LocalSignals do
         )
       end
       expect(described_class.snapshot(user)).to include(
-        "confirmed_spam_posts" => 6,
-        "history_points" => 120,
+        "confirmed_spam_posts" => 5,
+        "history_points" => 100,
       )
     end
 

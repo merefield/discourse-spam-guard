@@ -34,9 +34,9 @@ Discourse Spam Guard helps staff decide which accounts need attention, explains 
 
 * Checks new registrations in the background, with an optional delayed recheck and manual checks for individual accounts.
 * Looks up email and public registration IP reputation on Stop Forum Spam, with optional username evidence.
-* Provides an expandable dashboard on each admin user page, grouping external reputation, reading activity, posting patterns, moderation history and the action taken.
+* Provides an expandable dashboard on each admin user page, with a succinct saved-score explanation, a separate calculation column and evidence cards for reputation, reading, posting and moderation history. The layout stacks on smaller screens, with actions below and methodology expandable.
 * Adds a compact **Spam Guard** score to the admin user list. Click it to open that account's dashboard. Unchecked accounts show grey **N/A**; exempt accounts have a blue, explicitly labelled override.
-* Uses configurable, explainable scoring. Recent email and IP matches that both qualify as at least moderate contribute additively, capped by the existing combined setting. Reading contributes one adjustment; local signals include repeated identical posts, posting bursts and staff-confirmed spam posts.
+* Uses configurable, explainable scoring. Email reports contribute 8 points each (cap 60), and IP reports 3 each (cap 30), with full weight when last reported within 7 days, half within 30 days, and zero for older or undated evidence. Reading adjusts suspicion once; confirmed spam adds 85 points per post separately, with a final cap of 100. These defaults are configurable except for the fixed recency windows.
 * Offers **Observe**, **Review** and **Protect** modes, plus persistent account exemptions.
 * Lets admins contribute independently confirmed spam back to Stop Forum Spam, with an exact-data confirmation dialog, explicit agreement, duplicate protection, delivery status and audit history. This is included in the free plugin.
 
@@ -65,6 +65,8 @@ Install the plugin using the guide above, then open **Admin → Plugins → Spam
 * Adjust reputation thresholds, point weights, reading adjustments, local signals and scan retention in the plugin settings. [Scoring documentation](https://github.com/merefield/discourse-spam-guard/blob/main/docs/external-scoring.md) explains the calculation.
 
 **No API key is required for reputation lookups.** Reporting spam back to Stop Forum Spam uses a separate API key and enable setting.
+
+Saved assessments retain their original scores and settings. Older records show a legacy breakdown; recheck an account to apply the new formula. Report counts are cumulative, and the latest report date does not date every report.
 
 ### Discourse AI integration
 

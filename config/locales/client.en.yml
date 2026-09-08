@@ -1,6 +1,34 @@
 en:
   js:
     spam_guard:
+      calculation:
+        how: "How scoring works"
+        summary: "Email reports contributed %{email} points and IP reports %{ip}. Activity and reading adjusted suspicion by %{adjustment} points."
+        confirmed_summary: "Suspicion after activity and reading contributed %{suspicion} points. Staff-confirmed spam added %{confirmed} points."
+        legacy_summary: "Saved assessment using the previous scoring method. Recheck to apply the current formula."
+        posting: "Posting signals"
+        posting_formula: "min(%{duplicate} duplicate points + %{burst} burst points, cap %{cap})"
+        local_cap: "Posting and extension subtotal (cap %{cap})"
+        suspicion: "Suspicion subtotal (minimum 0)"
+        confirmed: "Staff-confirmed spam"
+        confirmed_formula:
+          one: "%{count} post × %{weight} points"
+          other: "%{count} posts × %{weight} points"
+        report_formula: "min(%{reports} reports × %{weight}, cap %{cap}) × %{multiplier} recency weight"
+        total: "Final score (cap 100)"
+        saved_total: "Saved final score"
+        saved: "Calculated using the evidence and settings saved with this check."
+        method: "Email and IP report counts each have a points-per-report weight and a cap. Posting and extension points are capped together. Reading adjusts suspicion once, with a minimum of zero. Confirmed spam points are then added separately; reading cannot reduce them. The final score is capped at 100. Review and automatic-silencing rules are separate."
+        recency_help: "Recency applies after each identifier’s cap: full weight when last reported within %{full_days} days, half within %{half_days} days, and zero for older, undated, future-dated or blacklisted matches. Counts are cumulative: the last report date does not date every report. Username and AI findings add no points. Provider reputation scores remain evidence for moderation rules, not additional score contributions."
+        recency:
+          full: "Last reported within %{full_days} days: full weight"
+          half: "Last reported more than %{full_days} and up to %{half_days} days ago: half weight"
+          expired: "Last reported more than %{half_days} days ago: no points"
+          undated: "Missing or invalid report date: no points"
+          future: "Future report date: no points"
+          blacklisted: "Provider blacklist result: informational only"
+          no_match: "No reported match: no points"
+          not_checked: "Identifier not checked: no points"
       ai:
         title: "Discourse AI findings"
         description: "Existing automated classifications, shown alongside staff decisions. AI findings add no risk points and never authorize reporting on their own."

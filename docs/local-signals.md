@@ -1,4 +1,4 @@
-# Local signals (policy version 6)
+# Local signals (policy version 8)
 
 The free plugin includes exact duplicate posts, posting bursts and confirmed spam
 moderation history. These are deterministic rules; no keywords, semantic analysis,
@@ -12,16 +12,16 @@ the default for the plugin and is recommended while evaluating the rules.
 | Posting burst | At least five posts across at least three public topics within ten minutes | +15 |
 | Confirmed spam | Distinct posts with spam flags agreed with by human staff in the last 30 days | +85 per post by default, configurable |
 
-Duplicate and burst contributions share a 25-point cap. Add confirmed spam points
-without first capping them, then apply the reading adjustment. The combined local
-contribution has a configurable upper cap of 100 by default; final scores are
-always bounded to 0–100. One posting signal produces watch; combined posting evidence or
-confirmed spam history can request review in Review or Protect mode, even when
-reading reduces the combined score to zero. Observe mode only records evidence.
+Duplicate and burst contributions share a 25-point cap. Posting and extension points
+share the configurable local cap before reading. Add external points and reading,
+then floor suspicion at zero. Confirmed spam points are added separately afterwards;
+reading never discounts them. The final score is capped at 100. One posting signal
+produces watch; combined posting evidence or confirmed spam history can request
+review in Review or Protect mode. Observe mode only records evidence.
 
 Confirmed spam requires review even when admins configure its points or the local
 cap to zero. With no external match, one confirmed post and sustained reading gives
-`85 - 15 = 70`; two give `170 - 15 = 155`, capped to 100. There is no special
+`max(0, -15) + 85 = 85`; two give `max(0, -15) + 170`, capped to 100. There is no special
 repeat-offence weight or decision floor in that arithmetic.
 Local points never authorize a silence, including when they raise the displayed
 score into the red band after reading reduced an external silence recommendation to review.
@@ -37,8 +37,8 @@ Only counts and contributions are stored, alongside the existing reading snapsho
 History uses agreed spam scores on approved `ReviewableFlaggedPost` records, with
 a positive-ID reviewer who is currently an admin or moderator. Multiple flags on
 one post count once. Pending, disagreed, ignored, non-spam and automated decisions
-are excluded, as are Spam Guard's own reviewables. The displayed history count is
-bounded at three; two confirmed posts already reach the contribution cap. Reversed
+are excluded, as are Spam Guard's own reviewables. The history sample is bounded by `max(3, ceil(100 / per-post points))`; a zero
+weight samples three. Two confirmed posts at the default weight reach the final cap. Reversed
 agreements stop contributing at the next check. Deletion or silence without a
 confirmed spam flag is not evidence. No new history table or migration is needed.
 

@@ -13,24 +13,25 @@ module DiscourseSpamGuard
       }
     end
 
+    FULL_WEIGHT_DAYS = 7
+    HALF_WEIGHT_DAYS = 30
+
     def self.external_weights
       {
-        "external_weak_points" => SiteSetting.spam_guard_external_weak_points,
-        "email_moderate_points" => SiteSetting.spam_guard_email_moderate_points,
-        "email_strong_points" => SiteSetting.spam_guard_email_strong_points,
-        "ip_moderate_points" => SiteSetting.spam_guard_ip_moderate_points,
-        "ip_strong_points" => SiteSetting.spam_guard_ip_strong_points,
-        "external_combined_points" => SiteSetting.spam_guard_external_combined_points,
+        "email_report_points" => SiteSetting.spam_guard_email_report_points,
+        "email_points_cap" => SiteSetting.spam_guard_email_points_cap,
+        "ip_report_points" => SiteSetting.spam_guard_ip_report_points,
+        "ip_points_cap" => SiteSetting.spam_guard_ip_points_cap,
+        "full_weight_days" => FULL_WEIGHT_DAYS,
+        "half_weight_days" => HALF_WEIGHT_DAYS,
         "email_moderate_confidence" => SiteSetting.spam_guard_email_moderate_confidence,
         "email_moderate_frequency" => SiteSetting.spam_guard_email_moderate_frequency,
-        "ip_moderate_confidence" => SiteSetting.spam_guard_ip_moderate_confidence,
-        "ip_moderate_frequency" => SiteSetting.spam_guard_ip_moderate_frequency,
       }
     end
 
     def self.settings
       {
-        "version" => 7,
+        "version" => 8,
         "weights" => weights,
         "external_weights" => external_weights,
         "preset" => SiteSetting.spam_guard_preset,
@@ -54,28 +55,45 @@ module DiscourseSpamGuard
       external = status == "checked" ? evaluate(evidence, settings) : "unknown"
       external_scoring = score_external(evidence, settings) if status == "checked"
       base = external_scoring&.fetch("score")
-      score = (base + engagement.fetch("adjustment")).clamp(0, 100) if base
-      decision = external
-      local_points = local_signals&.fetch("adjustment", 0) || 0
+      reading = engagement.fetch("adjustment")
+      confirmed_points = local_signals&.fetch("history_points", 0) || 0
+      posting_points =
+        local_signals&.fetch("posting_points") do
+          local_signals.fetch("adjustment", 0) - confirmed_points
+        end || 0
       local_cap = settings.fetch("weights") { weights }.fetch("local_cap")
       additional_points = [
         additional_evidence.sum { |entry| entry.fetch("points") },
         AdditionalEvidence::MAX_POINTS,
-        [local_cap - local_points - engagement.fetch("adjustment"), 0].max,
+        [local_cap - posting_points, 0].max,
       ].min
-      local_points += additional_points
-      if score
-        decision = "watch" if external == "allow" && score >= 10
-        # Configurable display weights must not relax automatic-silencing safeguards.
-        decision = "review" if external == "silence" && engagement.fetch("adjustment") < -5
-        score =
-          (base + [engagement.fetch("adjustment") + local_points, local_cap].min).clamp(0, 100)
-        if %w[allow watch].include?(decision)
-          decision = "watch" if local_points.positive?
-          decision = "review" if local_points >= LocalSignals::POSTING_CAP
-        end
+      local_points = posting_points + additional_points
+      capped_local = [local_points, local_cap].min
+      if base
+        suspicion = [0, base + capped_local + reading].max
+        score = [100, suspicion + confirmed_points].min
+        calculation = {
+          "external" => base,
+          "posting" => posting_points,
+          "posting_cap" => LocalSignals::POSTING_CAP,
+          "additional" => additional_points,
+          "local_cap" => local_cap,
+          "capped_local" => capped_local,
+          "reading" => reading,
+          "suspicion" => suspicion,
+          "confirmed" => confirmed_points,
+          "total_before_cap" => suspicion + confirmed_points,
+          "total" => score,
+        }
       end
-      decision = "review" if !score && local_points >= LocalSignals::POSTING_CAP
+      decision = external
+      decision = "watch" if external == "allow" && score && score >= 10
+      # Display scoring must not relax automatic-silencing safeguards.
+      decision = "review" if external == "silence" && reading < -5
+      if %w[allow watch unknown].include?(decision)
+        decision = "watch" if local_points.positive? && !base.nil?
+        decision = "review" if local_points >= LocalSignals::POSTING_CAP
+      end
       if %w[allow watch unknown].include?(decision) &&
            local_signals&.fetch("confirmed_spam_posts", 0).to_i.positive?
         decision = "review"
@@ -86,6 +104,7 @@ module DiscourseSpamGuard
         "scored" => !base.nil?,
         "base_score" => base,
         "score" => score,
+        "calculation" => calculation,
         "decision" => decision,
         "engagement" => engagement,
         "local_signals" => local_signals,
@@ -105,28 +124,47 @@ module DiscourseSpamGuard
       prefix = moderate ? "#{field}_moderate" : field
       data["frequency"] >= thresholds.fetch("#{prefix}_frequency") &&
         data["confidence"].to_f >= thresholds.fetch("#{prefix}_confidence")
+    rescue ArgumentError, TypeError
+      false
     end
 
     def self.score_external(evidence, settings)
       weights = settings.fetch("external_weights") { external_weights }
-      fields = evidence.transform_values { |data| data["appears"] || data["blacklisted"] }
-      scores = fields.transform_values { |matched| matched ? weights["external_weak_points"] : 0 }
-      tiers = fields.transform_values { |matched| matched ? "weak" : "none" }
-      %w[email ip].each do |field|
-        strong = qualifies?(evidence[field], field, settings)
-        moderate = qualifies?(evidence[field], field, settings, moderate: true)
-        next unless strong || moderate
+      fields =
+        %w[email ip].index_with do |field|
+          data = evidence[field] || {}
+          reports = [data.fetch("frequency", 0).to_i, 0].max
+          weight = weights.fetch("#{field}_report_points")
+          cap = weights.fetch("#{field}_points_cap")
+          reason = evidence.key?(field) ? recency_reason(data, weights) : "not_checked"
+          multiplier = { "full" => 1, "half" => 0.5 }.fetch(reason, 0)
+          capped = [reports * weight, cap].min
+          {
+            "reports" => reports,
+            "weight" => weight,
+            "cap" => cap,
+            "before_recency" => capped,
+            "multiplier" => multiplier,
+            "reason" => reason,
+            "points" => (capped * multiplier).round(1),
+          }
+        end
+      points = fields.transform_values { |field| field.fetch("points") }
+      { "score" => points.values.sum, "points" => points, "fields" => fields }
+    end
 
-        tiers[field] = strong ? "strong" : "moderate"
-        candidates = [scores[field], weights.fetch("#{field}_moderate_points")]
-        candidates << weights.fetch("#{field}_strong_points") if strong
-        scores[field] = candidates.max
-      end
-      combined = %w[email ip].all? { |field| %w[moderate strong].include?(tiers[field]) }
-      combined_points =
-        combined ? [scores["email"] + scores["ip"], weights["external_combined_points"]].min : 0
-      score = (scores.values + [combined_points]).max
-      { "score" => score, "tiers" => tiers, "points" => scores, "combined" => combined }
+    def self.recency_reason(data, weights)
+      return "blacklisted" if data["blacklisted"]
+      return "no_match" unless data["appears"]
+      return "undated" if data["last_seen"].blank?
+      seen = Time.zone.parse(data["last_seen"])
+      return "undated" unless seen
+      return "future" if seen > Time.current
+      return "full" if seen >= weights.fetch("full_weight_days").days.ago
+      return "half" if seen >= weights.fetch("half_weight_days").days.ago
+      "expired"
+    rescue ArgumentError, TypeError
+      "undated"
     end
 
     def self.evaluate(evidence, settings = self.settings)

@@ -122,10 +122,32 @@
     }
   }
 
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+  &__layout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 1rem;
+
+    > .spam-guard-calculation {
+      flex: 1 1 17rem;
+    }
+  }
+
+  &__body {
+    flex: 3 1 32rem;
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+
+    > .spam-guard-ai-evidence {
+      margin-block-start: 0;
+    }
+  }
+
+  &__summary {
+    font-size: var(--font-up-1);
+    margin-block: 0 1rem;
+    line-height: 1.5;
   }
 
   &__card,
@@ -396,5 +418,45 @@
 
   &__scope {
     margin-block-end: 0;
+  }
+}
+
+.spam-guard-calculation {
+  background: var(--primary-very-low);
+
+  &__lines {
+    display: grid;
+    gap: 0.85rem;
+    margin: 0;
+
+    > div {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.75rem;
+      align-items: start;
+    }
+
+    dd {
+      margin: 0;
+      font-weight: var(--token-font-weight-semibold);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &__formula {
+    display: block;
+    color: var(--token-color-text-subtle);
+    font-size: var(--font-down-1);
+    margin-block-start: 0.2rem;
+  }
+
+  &__subtotal,
+  &__total {
+    border-block-start: 1px solid var(--primary-low);
+    padding-block-start: 0.75rem;
+  }
+
+  &__total {
+    font-size: var(--font-up-1);
   }
 }

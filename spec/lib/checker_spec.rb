@@ -30,7 +30,7 @@ RSpec.describe DiscourseSpamGuard::Checker do
       expect(scan.attributes.to_json).not_to include(user.email)
     end
 
-    it "weights confirmed spam above reading reassurance and retains the configured snapshot" do
+    it "adds confirmed spam separately from reading reassurance and retains the configured snapshot" do
       SiteSetting.spam_guard_mode = "protect"
       stub_request(:post, "https://api.stopforumspam.org/api").to_return(
         body: { success: 1, email: { appears: 0, frequency: 0 } }.to_json,
@@ -59,15 +59,15 @@ RSpec.describe DiscourseSpamGuard::Checker do
 
       original = described_class.call(user, source: "registration")
       expect(original).to have_attributes(decision: "review", action_taken: "review")
-      expect(original.policy.dig("assessment", "score")).to eq(70)
+      expect(original.policy.dig("assessment", "score")).to eq(85)
       expect(user.reload).not_to be_silenced
 
       SiteSetting.spam_guard_confirmed_spam_points = 90
       updated = described_class.call(user, source: "manual")
-      expect(updated.policy.dig("assessment", "score")).to eq(75)
+      expect(updated.policy.dig("assessment", "score")).to eq(90)
       expect(updated.policy.dig("weights", "confirmed_spam")).to eq(90)
       expect(original.reload.policy.dig("weights", "confirmed_spam")).to eq(85)
-      expect(original.policy.dig("assessment", "score")).to eq(70)
+      expect(original.policy.dig("assessment", "score")).to eq(85)
 
       SiteSetting.spam_guard_confirmed_spam_points = 80
       second_review =
@@ -173,7 +173,7 @@ RSpec.describe DiscourseSpamGuard::Checker do
 
       expect(scan).to have_attributes(decision: "review", action_taken: "review")
       expect(user.reload).not_to be_silenced
-      expect(scan.policy["assessment"]).to include("external_decision" => "silence", "score" => 75)
+      expect(scan.policy["assessment"]).to include("external_decision" => "silence", "score" => 50)
       user.user_stat.update!(time_read: 600)
       expect(scan.reload.policy["assessment"]["engagement"]["reading_seconds"]).to eq(180)
     end
