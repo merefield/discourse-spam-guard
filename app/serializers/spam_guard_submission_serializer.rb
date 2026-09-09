@@ -11,8 +11,10 @@ class SpamGuardSubmissionSerializer < ApplicationSerializer
              :events
 
   def events
-    usernames =
-      User.where(id: object.events.map { |event| event["actor_id"] }).pluck(:id, :username).to_h
+    actor_ids = object.events.filter_map { |event| event["actor_id"] }.uniq
+    return object.events if actor_ids.empty?
+
+    usernames = User.where(id: actor_ids).pluck(:id, :username).to_h
     object.events.map { |event| event.merge("actor_username" => usernames[event["actor_id"]]) }
   end
 end
